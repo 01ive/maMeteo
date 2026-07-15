@@ -226,14 +226,12 @@
                             ? station.meta.name 
                             : `Pioupiou #${station.id}`;
 
-                        // Design issu du plugin Windy
+                        // Nouveau design unifié : la flèche et la vitesse dans la même bulle
                         const iconHtml = `
-                            <div style="display: flex; flex-direction: column; align-items: center; filter: drop-shadow(0px 2px 3px rgba(0,0,0,0.4));">
-                                <div style="transform: rotate(${heading}deg); font-size: 18px; font-weight: bold; color: #e74c3c; text-shadow: 0 0 3px white, 0 0 3px white;">
-                                    ↓
-                                </div>
-                                <div style="background: rgba(255,255,255,0.95); border: 1px solid #333; border-radius: 4px; padding: 2px 6px; font-size: 11px; font-weight: bold; color: #333; margin-top: -3px;">
-                                    ${speed}
+                            <div style="position: absolute; transform: translate(-50%, -50%);">
+                                <div style="background: rgba(255,255,255,0.95); border: 1px solid #333; border-radius: 12px; padding: 3px 8px; font-size: 12px; font-weight: bold; color: #333; display: flex; align-items: center; gap: 6px; box-shadow: 0px 2px 4px rgba(0,0,0,0.3); white-space: nowrap;">
+                                    <span style="display: inline-block; transform: rotate(${heading}deg); color: #e74c3c; font-size: 15px;">↓</span>
+                                    <span>${speed}</span>
                                 </div>
                             </div>
                         `;
@@ -241,12 +239,12 @@
                         const pioupiouIcon = L.divIcon({
                             className: 'pioupiou-marker',
                             html: iconHtml,
-                            iconSize: [40, 40],
-                            iconAnchor: [20, 20],
-                            popupAnchor: [0, -20]
+                            iconSize: [0, 0], // On met 0,0 car le centrage est géré par le translate(-50%, -50%) du HTML
+                            popupAnchor: [0, -15]
                         });
 
-                        L.marker([lat, lon], { icon: pioupiouIcon })
+                        const marker = L.marker([lat, lon], { 
+                            icon: pioupiouIcon })
                             .addTo(pioupiouLayer)
                             .bindPopup(`
                                 <div style="text-align: center; font-family: sans-serif;">
