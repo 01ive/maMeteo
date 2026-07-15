@@ -107,8 +107,8 @@
         .grid-container::-webkit-scrollbar-thumb { background: #c1c1c1; border-radius: 4px; }
         .grid-container::-webkit-scrollbar-thumb:hover { background: #a8a8a8; }
 
-        table { border-collapse: collapse; text-align: center; min-width: 800px; }
-        th, td { border: 1px solid var(--border-color); padding: 4px; width: 40px; height: 40px; transition: background-color 0.3s; }
+        table { border-collapse: collapse; text-align: center; table-layout: fixed; width: auto; }
+        th, td { border: 1px solid var(--border-color); padding: 4px; width: 40px; min-width: 40px; height: 40px; transition: background-color 0.3s; }
         th { background-color: #f8f9fa; font-weight: 600; font-size: 12px; position: sticky; left: 0; z-index: 2; }
         
         .hour-header { cursor: pointer; color: #2980b9; text-decoration: underline; transition: all 0.2s; position: static; z-index: 1; }
@@ -187,6 +187,10 @@
                 <button id="btn-prev">◀</button>
                 <h3 id="current-date-display">Date</h3>
                 <button id="btn-next">▶</button>
+            </div>
+
+            <div class="date-controls">
+                <button id="toggle-view-btn">Mode réduit</button>
             </div>
 
             <div id="loading">Chargement des données...</div>
@@ -392,11 +396,16 @@
         const dateDisplay = document.getElementById('current-date-display');
         const btnPrev = document.getElementById('btn-prev');
         const btnNext = document.getElementById('btn-next');
+        const toggleViewBtn = document.getElementById('toggle-view-btn');
 
         const windSpeedVars = LEVELS.map(l => `windspeed_${l.hpa}hPa`).join(',');
         const windDirVars = LEVELS.map(l => `winddirection_${l.hpa}hPa`).join(',');
         const tempVars = LEVELS.map(l => `temperature_${l.hpa}hPa`).join(',');
         const dewVars = LEVELS.map(l => `dewpoint_${l.hpa}hPa`).join(',');
+
+        const compactModeRows = ["0m", "1000m", "2000m", "3000m", "4000m"];
+        const compactModeHours = [9, 13, 17];
+        let isCompactView = false;
 
         function getCardinalDirection(angle) {
             const directions = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW', 'N'];
@@ -434,7 +443,7 @@
                 globalWeatherData = data.hourly;
                 
                 renderGrid(globalWeatherData);
-                drawSondage(12, "12h", false); 
+                drawSondage(14, "14h", false); 
 
             } catch (error) {
                 console.error("Erreur API :", error);
@@ -447,6 +456,13 @@
         btnPrev.addEventListener('click', () => { currentDate.setDate(currentDate.getDate() - 1); updateDateDisplay(); fetchWeatherData(); });
         btnNext.addEventListener('click', () => { currentDate.setDate(currentDate.getDate() + 1); updateDateDisplay(); fetchWeatherData(); });
         modelSelect.addEventListener('change', () => { fetchWeatherData(); });
+        toggleViewBtn.addEventListener('click', () => {
+            isCompactView = !isCompactView;
+            toggleViewBtn.innerText = isCompactView ? 'Mode complet' : 'Mode réduit';
+            if (globalWeatherData) {
+                renderGrid(globalWeatherData);
+            }
+        });
 
         function getWindColorClass(speed) {
             if (speed < 15) return 'wind-light';
@@ -457,6 +473,7 @@
         }
 
         function renderGrid(hourlyData) {
+            windGrid.innerHTML = '';
             const table = document.createElement('tbody');
             const headerRow = document.createElement('tr');
             
@@ -465,8 +482,16 @@
             emptyTh.style.fontSize = "11px";
             emptyTh.style.zIndex = "3"; 
             headerRow.appendChild(emptyTh);
+
+            const visibleHourIndices = isCompactView
+                ? hourlyData.time.reduce((acc, t, i) => {
+                    const hour = new Date(t).getHours();
+                    if (compactModeHours.includes(hour)) acc.push(i);
+                    return acc;
+                }, [])
+                : Array.from({ length: 24 }, (_, i) => i);
             
-            for (let i = 0; i < 24; i++) {
+            visibleHourIndices.forEach(i => {
                 const th = document.createElement('th');
                 const date = new Date(hourlyData.time[i]);
                 const hourStr = `${date.getHours()}h`;
@@ -477,7 +502,7 @@
                 
                 th.onclick = () => drawSondage(i, hourStr, true);
                 headerRow.appendChild(th);
-            }
+            });
             table.appendChild(headerRow);
 
             const thermalTops = [];
@@ -514,20 +539,26 @@
                 thermalTops.push(currentTopIdx);
             }
 
-            LEVELS.forEach((level, j) => {
+            const visibleLevels = isCompactView
+                ? LEVELS.filter(level => compactModeRows.includes(level.alt))
+                : LEVELS;
+
+            visibleLevels.forEach(level => {
                 const row = document.createElement('tr');
                 const thY = document.createElement('th');
                 thY.className = 'y-axis';
                 thY.innerText = `${level.alt}`;
                 row.appendChild(thY);
 
-                for (let i = 0; i < 24; i++) {
+                const levelIndex = LEVELS.indexOf(level);
+
+                visibleHourIndices.forEach(i => {
                     const td = document.createElement('td');
                     
                     if (!hourlyData[`windspeed_${level.hpa}hPa`] || hourlyData[`windspeed_${level.hpa}hPa`][i] === undefined) {
                         td.innerText = "-";
                         row.appendChild(td);
-                        continue;
+                        return;
                     }
 
                     const speed = Math.round(hourlyData[`windspeed_${level.hpa}hPa`][i]);
@@ -565,7 +596,7 @@
                     }
 
                     let z = parseInt(level.alt);
-                    if (j === thermalTops[i] && z >= globalElevation) {
+                    if (levelIndex === thermalTops[i] && z >= globalElevation) {
                         td.style.boxShadow = 'inset 0 -4px 0 #e74c3c';
                         if (isCloudy) td.style.color = 'white'; 
                     }
@@ -582,7 +613,7 @@
                         `;
                     }
                     row.appendChild(td);
-                }
+                });
                 table.appendChild(row);
             });
 
