@@ -6,7 +6,6 @@
     <title>Sondage Aérologique Interactif</title>
     
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
@@ -17,9 +16,7 @@
             --border-color: #ddd;
         }
         
-        * {
-            box-sizing: border-box; /* Assure que les paddings ne cassent pas les largeurs */
-        }
+        * { box-sizing: border-box; }
 
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
@@ -32,21 +29,17 @@
             overflow: hidden;
         }
 
-        /* 1. CORRECTION DU LAYOUT : Tailles strictes */
         #left-panel {
-            flex: 0 0 66.66%; /* Exactement 2/3 de l'écran */
+            flex: 0 0 66.66%;
             height: 100%;
             position: relative;
             z-index: 1;
         }
 
-        #map {
-            width: 100%;
-            height: 100%;
-        }
+        #map { width: 100%; height: 100%; }
 
         #right-panel {
-            flex: 0 0 33.33%; /* Exactement 1/3 de l'écran */
+            flex: 0 0 33.33%;
             height: 100%;
             overflow-y: auto;
             overflow-x: hidden;
@@ -60,19 +53,12 @@
         }
 
         .header, .grid-container, .chart-container {
-            flex-shrink: 0; /* Empêche ces éléments de s'écraser */
+            flex-shrink: 0;
             width: 100%;
         }
 
-        .header {
-            text-align: center;
-            margin-bottom: 20px;
-        }
-        .header h2 {
-            margin-top: 0;
-            font-size: 1.4rem;
-            color: #2c3e50;
-        }
+        .header { text-align: center; margin-bottom: 20px; }
+        .header h2 { margin-top: 0; font-size: 1.4rem; color: #2c3e50; }
         
         select {
             padding: 8px;
@@ -104,17 +90,8 @@
             font-weight: bold;
             transition: all 0.2s;
         }
-        .date-controls button:hover {
-            background-color: #e8f4f8;
-            border-color: #2980b9;
-        }
-        .date-controls h3 {
-            margin: 0;
-            font-size: 15px;
-            text-align: center;
-            color: #2c3e50;
-            text-transform: capitalize;
-        }
+        .date-controls button:hover { background-color: #e8f4f8; border-color: #2980b9; }
+        .date-controls h3 { margin: 0; font-size: 15px; text-align: center; color: #2c3e50; text-transform: capitalize; }
 
         .grid-container {
             overflow-x: auto;
@@ -132,13 +109,15 @@
         table {
             border-collapse: collapse;
             text-align: center;
-            min-width: 800px; /* Force l'apparition du scroll horizontal plutôt que d'écraser les 24 colonnes */
+            min-width: 800px;
         }
         th, td {
             border: 1px solid var(--border-color);
             padding: 4px;
             width: 40px;
             height: 40px;
+            /* Transition fluide si la case change de couleur */
+            transition: background-color 0.3s;
         }
         th {
             background-color: #f8f9fa;
@@ -156,14 +135,8 @@
             position: static; 
             z-index: 1;
         }
-        .hour-header:hover {
-            background-color: #e8f4f8;
-        }
-        .hour-header.active {
-            background-color: #2980b9;
-            color: white;
-            text-decoration: none;
-        }
+        .hour-header:hover { background-color: #e8f4f8; }
+        .hour-header.active { background-color: #2980b9; color: white; text-decoration: none; }
 
         .y-axis {
             text-align: right;
@@ -178,12 +151,10 @@
             justify-content: center;
             font-size: 11px;
             font-weight: bold;
+            /* Empêche le texte de devenir invisible sur fond gris */
+            text-shadow: 0px 0px 2px rgba(255,255,255,0.8);
         }
-        .arrow {
-            display: inline-block;
-            font-size: 16px;
-            transition: transform 0.3s ease;
-        }
+        .arrow { display: inline-block; font-size: 16px; transition: transform 0.3s ease; }
         
         .wind-light { color: #2ecc71; }
         .wind-mod   { color: #f1c40f; }
@@ -191,35 +162,12 @@
         .wind-gale  { color: #e74c3c; }
         .wind-hurricane { color: #8e44ad; }
         
-        #loading {
-            margin-top: 5px;
-            font-style: italic;
-            color: #666;
-            height: 20px;
-            font-size: 13px;
-        }
+        #loading { margin-top: 5px; font-style: italic; color: #666; height: 20px; font-size: 13px; }
 
-        .chart-container {
-            background: white;
-            padding: 15px;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-            display: none; 
-        }
-        #chart-title {
-            text-align: center;
-            margin-top: 0;
-            font-size: 15px;
-            color: #2c3e50;
-            margin-bottom: 15px;
-        }
+        .chart-container { background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); display: none; }
+        #chart-title { text-align: center; margin-top: 0; font-size: 15px; color: #2c3e50; margin-bottom: 15px; }
         
-        /* 2. CORRECTION DU GRAPHIQUE : Le Wrapper limitant */
-        .canvas-wrapper {
-            position: relative;
-            height: 350px; /* Fixe la hauteur pour bloquer l'expansion de Chart.js */
-            width: 100%;
-        }
+        .canvas-wrapper { position: relative; height: 350px; width: 100%; }
     </style>
 </head>
 <body>
@@ -230,7 +178,7 @@
 
     <div id="right-panel">
         <div class="header">
-            <h2>Aérologie : <span id="location-name">Puy Mary</span></h2>
+            <h2>Aérologie : <span id="location-name">Dienne</span></h2>
             <div style="font-size: 12px; color: #666; margin-bottom: 10px;" id="coords-display">45.193°N, 2.808°E</div>
             
             <label for="model-select" style="font-size: 13px;">Modèle Météo :</label><br>
@@ -263,11 +211,12 @@
     </div>
 
     <script>
-        let currentLat = 45.109; 
-        let currentLon = 2.676;
+        let currentLat = 45.193; 
+        let currentLon = 2.808;
 
         const map = L.map('map').setView([currentLat, currentLon], 11);
         
+        // Utilisation du fond de carte IGN (Plan IGN) pour éviter les blocages locaux et avoir un excellent rendu de montagne
         L.tileLayer('https://data.geopf.fr/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=GEOGRAPHICALGRIDSYSTEMS.PLANIGNV2&STYLE=normal&FORMAT=image/png&TILEMATRIXSET=PM&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}', {
             maxZoom: 19,
             attribution: '© <a href="https://www.ign.fr/">IGN</a> - Géoportail'
@@ -287,7 +236,6 @@
             try {
                 const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${currentLat}&lon=${currentLon}&zoom=10`);
                 const data = await response.json();
-                
                 const placeName = data.address.city || data.address.town || data.address.village || data.address.municipality || data.name || "Position sélectionnée";
                 document.getElementById('location-name').innerText = placeName;
             } catch (error) {
@@ -350,7 +298,6 @@
             chartSection.style.display = 'none';
 
             const dateStr = getApiDateString(currentDate);
-
             const url = `https://api.open-meteo.com/v1/forecast?latitude=${currentLat}&longitude=${currentLon}&hourly=${windSpeedVars},${windDirVars},${tempVars},${dewVars}&models=${model}&start_date=${dateStr}&end_date=${dateStr}&timezone=Europe%2FBerlin`;
 
             try {
@@ -361,7 +308,6 @@
 
                 globalWeatherData = data.hourly;
                 renderGrid(globalWeatherData);
-                
                 drawSondage(12, "12h", false); 
 
             } catch (error) {
@@ -372,21 +318,9 @@
             }
         }
 
-        btnPrev.addEventListener('click', () => {
-            currentDate.setDate(currentDate.getDate() - 1);
-            updateDateDisplay();
-            fetchWeatherData();
-        });
-
-        btnNext.addEventListener('click', () => {
-            currentDate.setDate(currentDate.getDate() + 1);
-            updateDateDisplay();
-            fetchWeatherData();
-        });
-
-        modelSelect.addEventListener('change', () => {
-            fetchWeatherData();
-        });
+        btnPrev.addEventListener('click', () => { currentDate.setDate(currentDate.getDate() - 1); updateDateDisplay(); fetchWeatherData(); });
+        btnNext.addEventListener('click', () => { currentDate.setDate(currentDate.getDate() + 1); updateDateDisplay(); fetchWeatherData(); });
+        modelSelect.addEventListener('change', () => { fetchWeatherData(); });
 
         function getWindColorClass(speed) {
             if (speed < 15) return 'wind-light';
@@ -416,7 +350,6 @@
                 th.id = `hour-header-${i}`; 
                 
                 th.onclick = () => drawSondage(i, hourStr, true);
-                
                 headerRow.appendChild(th);
             }
             table.appendChild(headerRow);
@@ -439,9 +372,27 @@
 
                     const speed = Math.round(hourlyData[`windspeed_${level.hpa}hPa`][i]);
                     const direction = hourlyData[`winddirection_${level.hpa}hPa`][i];
+                    
+                    // --- DÉTECTION DES NUAGES VIA LA TEMPÉRATURE ET LE POINT DE ROSÉE ---
+                    const temp = hourlyData[`temperature_${level.hpa}hPa`][i];
+                    const dew = hourlyData[`dewpoint_${level.hpa}hPa`][i];
+
+                    if (temp !== null && dew !== null) {
+                        const spread = temp - dew;
+                        if (spread <= 1.5) {
+                            // Nuage dense
+                            td.style.backgroundColor = 'rgba(170, 180, 190, 0.7)';
+                        } else if (spread <= 3) {
+                            // Air très humide, nuage léger ou brouillard
+                            td.style.backgroundColor = 'rgba(170, 180, 190, 0.25)';
+                        } else {
+                            // Ciel clair : on remet le fond transparent
+                            td.style.backgroundColor = 'transparent';
+                        }
+                    }
 
                     if (speed === null || isNaN(speed)) {
-                        td.innerText = "-";
+                        td.innerHTML = "-";
                     } else {
                         const colorClass = getWindColorClass(speed);
                         td.innerHTML = `
