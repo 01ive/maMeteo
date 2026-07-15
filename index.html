@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sondage Aérologique Interactif</title>
+    <title>Sondage Aérologique Interactif & Temps Réel</title>
     
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
@@ -106,52 +106,16 @@
         .grid-container::-webkit-scrollbar-thumb { background: #c1c1c1; border-radius: 4px; }
         .grid-container::-webkit-scrollbar-thumb:hover { background: #a8a8a8; }
 
-        table {
-            border-collapse: collapse;
-            text-align: center;
-            min-width: 800px;
-        }
-        th, td {
-            border: 1px solid var(--border-color);
-            padding: 4px;
-            width: 40px;
-            height: 40px;
-            transition: background-color 0.3s;
-        }
-        th {
-            background-color: #f8f9fa;
-            font-weight: 600;
-            font-size: 12px;
-            position: sticky; 
-            left: 0;
-            z-index: 2;
-        }
-        .hour-header {
-            cursor: pointer;
-            color: #2980b9;
-            text-decoration: underline;
-            transition: all 0.2s;
-            position: static; 
-            z-index: 1;
-        }
+        table { border-collapse: collapse; text-align: center; min-width: 800px; }
+        th, td { border: 1px solid var(--border-color); padding: 4px; width: 40px; height: 40px; transition: background-color 0.3s; }
+        th { background-color: #f8f9fa; font-weight: 600; font-size: 12px; position: sticky; left: 0; z-index: 2; }
+        
+        .hour-header { cursor: pointer; color: #2980b9; text-decoration: underline; transition: all 0.2s; position: static; z-index: 1; }
         .hour-header:hover { background-color: #e8f4f8; }
         .hour-header.active { background-color: #2980b9; color: white; text-decoration: none; }
 
-        .y-axis {
-            text-align: right;
-            padding-right: 10px;
-            white-space: nowrap;
-            background-color: #f8f9fa;
-        }
-        .cell-content {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            font-size: 11px;
-            font-weight: bold;
-            text-shadow: 0px 0px 2px rgba(255,255,255,0.8);
-        }
+        .y-axis { text-align: right; padding-right: 10px; white-space: nowrap; background-color: #f8f9fa; }
+        .cell-content { display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 11px; font-weight: bold; text-shadow: 0px 0px 2px rgba(255,255,255,0.8); }
         .arrow { display: inline-block; font-size: 16px; transition: transform 0.3s ease; }
         
         .wind-light { color: #2ecc71; }
@@ -164,19 +128,14 @@
 
         .chart-container { background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); display: none; }
         #chart-title { text-align: center; margin-top: 0; font-size: 15px; color: #2c3e50; margin-bottom: 15px; }
-        
         .canvas-wrapper { position: relative; height: 350px; width: 100%; }
         
-        .legend-box {
-            font-size: 11px;
-            display: flex;
-            justify-content: center;
-            gap: 15px;
-            margin-top: 8px;
-            color: #555;
-        }
+        .legend-box { font-size: 11px; display: flex; justify-content: center; gap: 15px; margin-top: 8px; color: #555; }
         .legend-item { display: flex; align-items: center; gap: 5px; }
         .legend-color { width: 12px; height: 12px; border: 1px solid #ccc; }
+        
+        /* Nettoyage du style de l'icône divIcon Leaflet */
+        .pioupiou-marker { background: none; border: none; }
     </style>
 </head>
 <body>
@@ -188,7 +147,7 @@
     <div id="right-panel">
         <div class="header">
             <h2>Aérologie : <span id="location-name">Puy Mary</span></h2>
-            <div style="font-size: 12px; color: #666; margin-bottom: 10px;" id="coords-display">45.193°N, 2.808°E</div>
+            <div style="font-size: 12px; color: #666; margin-bottom: 10px;" id="coords-display">45.109°N, 2.676°E</div>
             
             <label for="model-select" style="font-size: 13px;">Modèle Météo :</label><br>
             <select id="model-select">
@@ -224,6 +183,7 @@
     </div>
 
     <script>
+        // Paramétré pour le Puy Mary
         let currentLat = 45.109; 
         let currentLon = 2.676;
 
@@ -236,6 +196,79 @@
 
         let marker = L.marker([currentLat, currentLon]).addTo(map);
 
+        // --- GESTION DES BALISES PIOUPIOU ---
+        let pioupiouLayer = L.layerGroup().addTo(map);
+
+        async function loadPioupiouStations() {
+            const API_URL = 'https://api.pioupiou.fr/v1/live/all';
+            try {
+                const response = await fetch(API_URL);
+                const result = await response.json();
+
+                if (result && result.data) {
+                    pioupiouLayer.clearLayers();
+                    
+                    result.data.forEach(station => {
+                        if (!station.location || !station.location.latitude || !station.location.longitude) return;
+
+                        const lat = station.location.latitude;
+                        const lon = station.location.longitude;
+                        
+                        const speed = station.measurements && station.measurements.wind_speed_avg !== null 
+                            ? Math.round(station.measurements.wind_speed_avg) 
+                            : '-';
+                        
+                        const heading = station.measurements && station.measurements.wind_heading !== null 
+                            ? station.measurements.wind_heading 
+                            : 0;
+                        
+                        const name = station.meta && station.meta.name 
+                            ? station.meta.name 
+                            : `Pioupiou #${station.id}`;
+
+                        // Design issu du plugin Windy
+                        const iconHtml = `
+                            <div style="display: flex; flex-direction: column; align-items: center; filter: drop-shadow(0px 2px 3px rgba(0,0,0,0.4));">
+                                <div style="transform: rotate(${heading}deg); font-size: 18px; font-weight: bold; color: #e74c3c; text-shadow: 0 0 3px white, 0 0 3px white;">
+                                    ↓
+                                </div>
+                                <div style="background: rgba(255,255,255,0.95); border: 1px solid #333; border-radius: 4px; padding: 2px 6px; font-size: 11px; font-weight: bold; color: #333; margin-top: -3px;">
+                                    ${speed}
+                                </div>
+                            </div>
+                        `;
+
+                        const pioupiouIcon = L.divIcon({
+                            className: 'pioupiou-marker',
+                            html: iconHtml,
+                            iconSize: [40, 40],
+                            iconAnchor: [20, 20],
+                            popupAnchor: [0, -20]
+                        });
+
+                        L.marker([lat, lon], { icon: pioupiouIcon })
+                            .addTo(pioupiouLayer)
+                            .bindPopup(`
+                                <div style="text-align: center; font-family: sans-serif;">
+                                    <strong style="font-size: 14px; color: #2980b9;">${name}</strong><br>
+                                    <hr style="margin: 5px 0; border: 0; border-top: 1px solid #eee;">
+                                    Vent moyen : <b>${speed} km/h</b><br>
+                                    Direction : <b>${heading}°</b>
+                                </div>
+                            `);
+                    });
+                }
+            } catch (error) {
+                console.error("Erreur lors du chargement des balises Pioupiou :", error);
+            }
+        }
+
+        // Chargement initial des balises
+        loadPioupiouStations();
+        // Optionnel : Actualiser les balises toutes les 10 minutes
+        setInterval(loadPioupiouStations, 10 * 60 * 1000);
+
+        // --- GESTION DE LA SÉLECTION SUR LA CARTE ---
         map.on('click', async function(e) {
             currentLat = e.latlng.lat;
             currentLon = e.latlng.lng;
@@ -257,6 +290,7 @@
             fetchWeatherData();
         });
 
+        // --- GESTION DE LA MÉTÉO ---
         const LEVELS = [
             { alt: "11800m", hpa: "200" },
             { alt: "10500m", hpa: "250" },
@@ -272,7 +306,6 @@
             { alt: "0m",     hpa: "1000" }
         ];
 
-        // --- NOUVELLE VARIABLE POUR STOCKER L'ALTITUDE RÉELLE ---
         let globalElevation = 0;
         let globalWeatherData = null;
         let sondageChartInstance = null;
@@ -312,7 +345,6 @@
             chartSection.style.display = 'none';
 
             const dateStr = getApiDateString(currentDate);
-            // AJOUT DE temperature_2m DANS L'URL POUR AVOIR LA TEMPÉRATURE RÉELLE AU SOL
             const url = `https://api.open-meteo.com/v1/forecast?latitude=${currentLat}&longitude=${currentLon}&hourly=${windSpeedVars},${windDirVars},${tempVars},${dewVars},temperature_2m&models=${model}&start_date=${dateStr}&end_date=${dateStr}&timezone=Europe%2FBerlin`;
 
             try {
@@ -321,7 +353,6 @@
                 
                 if (data.error) throw new Error(data.reason);
 
-                // On récupère l'altitude que le modèle météo considère comme le "sol"
                 globalElevation = data.elevation || 0; 
                 globalWeatherData = data.hourly;
                 
@@ -372,22 +403,19 @@
             }
             table.appendChild(headerRow);
 
-            // --- CORRECTION DU CALCUL DES THERMIQUES ---
             const thermalTops = [];
             for (let i = 0; i < 24; i++) {
                 let currentTopIdx = 11; 
                 
-                // On utilise la vraie température à 2m du sol
                 if (hourlyData.temperature_2m && hourlyData.temperature_2m[i] !== undefined) {
                     let tBase = hourlyData.temperature_2m[i];
-                    let zBase = globalElevation; // Le vrai niveau du sol
-                    let tParcelBase = tBase + 2.5; // Déclencheur solide
+                    let zBase = globalElevation;
+                    let tParcelBase = tBase + 2.5; 
                     
                     for (let j = 11; j >= 0; j--) {
                         let level = LEVELS[j];
                         let z = parseInt(level.alt);
                         
-                        // Si le niveau est sous terre, on l'ignore visuellement (le thermique démarre au dessus)
                         if (z <= zBase) {
                             currentTopIdx = j;
                             continue;
@@ -396,8 +424,8 @@
                         let tEnv = hourlyData[`temperature_${level.hpa}hPa`][i];
                         if (tEnv === null || tEnv === undefined) break;
                         
-                        let dz = z - zBase; // Élévation depuis le sol réel
-                        let tParcel = tParcelBase - (dz / 100) * 0.98; // Refroidissement adiabatique
+                        let dz = z - zBase; 
+                        let tParcel = tParcelBase - (dz / 100) * 0.98;
                         
                         if (tParcel >= tEnv) {
                             currentTopIdx = j; 
@@ -459,12 +487,9 @@
                         }
                     }
 
-                    // --- AFFICHAGE DU PLAFOND (CORRIGÉ) ---
-                    // On ne trace le thermique que si on est au-dessus du sol réel, pour éviter de polluer les cases "souterraines"
                     let z = parseInt(level.alt);
                     if (j === thermalTops[i] && z >= globalElevation) {
                         td.style.boxShadow = 'inset 0 -4px 0 #e74c3c';
-                        // Optionnel : rendre le texte blanc si jamais ça tombe sur un nuage sombre
                         if (isCloudy) td.style.color = 'white'; 
                     }
 
@@ -507,6 +532,7 @@
                 return val !== null && val !== undefined ? val : null;
             });
 
+            // UTILISATION DE TON SKEW_FACTOR
             const SKEW_FACTOR = 0.08; 
             
             const skewedTemperatures = originalTemperatures.map((t, i) => {
