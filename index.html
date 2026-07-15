@@ -8,6 +8,7 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://www.openwindmap.org/js/widget-v1.js"></script>
 
     <style>
         :root {
@@ -144,6 +145,9 @@
         <div id="map"></div>
     </div>
 
+    <div id="pioupiou-widget-container" style="position: absolute; bottom: 20px; left: 20px; z-index: 1000; background: white; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.3); overflow: hidden; display: none;">
+    </div>
+
     <div id="right-panel">
         <div class="header">
             <h2>Aérologie : <span id="location-name">Puy Mary</span></h2>
@@ -278,6 +282,31 @@
                         // Fermeture du popup quand on sort de la zone
                         marker.on('mouseout', function(e) {
                             this.closePopup();
+                        });
+
+                        marker.on('click', function(e) {
+                            const container = document.getElementById('pioupiou-widget-container');
+                            const widgetId = `PP${station.id}`; 
+                            
+                            container.style.display = 'block';
+                            container.style.width = '200px';
+                            container.style.height = '230px';
+                            
+                            // 1. On vide le conteneur
+                            container.innerHTML = `
+                                <div style="padding: 5px; text-align: right; background: #f8f8f8;">
+                                    <button onclick="document.getElementById('pioupiou-widget-container').style.display='none'" style="cursor:pointer;">✕</button>
+                                </div>
+                                <div class="owm-widget" data-id="${widgetId}" data-show-live="yes" data-show-2h="yes" data-show-24h="no"></div>
+                            `;
+
+                            // 3. On crée un élément SCRIPT pour forcer le chargement de la logique
+                            const script = document.createElement('script');
+                            script.src = "https://www.openwindmap.org/js/widget-v1.js";
+                            script.async = true;
+                            
+                            // On ajoute le script au DOM, ce qui déclenchera l'auto-initialisation du widget
+                            document.body.appendChild(script);
                         });
                     });
                 }
