@@ -88,6 +88,7 @@
         .wind-mod   { color: #f1c40f; }
         .wind-strong{ color: #e67e22; }
         .wind-gale  { color: #e74c3c; }
+        .wind-hurricane { color: #8e44ad; } /* Nouvelle couleur pour les vents extrêmes d'altitude (> 100 km/h) */
         
         #loading {
             margin-top: 20px;
@@ -138,14 +139,20 @@
         const LAT = 45.193;
         const LON = 2.808;
 
+        // Mise à jour : Extension des niveaux jusqu'à la limite de la troposphère (~11.8 km)
         const LEVELS = [
-            { alt: "4000m", hpa: "600" },
-            { alt: "3000m", hpa: "700" },
-            { alt: "2000m", hpa: "800" },
-            { alt: "1500m", hpa: "850" },
-            { alt: "1000m", hpa: "900" },
-            { alt: "500m",  hpa: "950" },
-            { alt: "0m",    hpa: "1000" }
+            { alt: "11800m", hpa: "200" },
+            { alt: "10500m", hpa: "250" },
+            { alt: "9000m",  hpa: "300" },
+            { alt: "7000m",  hpa: "400" },
+            { alt: "5500m",  hpa: "500" },
+            { alt: "4000m",  hpa: "600" },
+            { alt: "3000m",  hpa: "700" },
+            { alt: "2000m",  hpa: "800" },
+            { alt: "1500m",  hpa: "850" },
+            { alt: "1000m",  hpa: "900" },
+            { alt: "500m",   hpa: "950" },
+            { alt: "0m",     hpa: "1000" }
         ];
 
         let globalWeatherData = null;
@@ -182,11 +189,13 @@
             }
         }
 
+        // Ajout d'une couleur violette pour les vents très violents (typiques à 9000m+)
         function getWindColorClass(speed) {
             if (speed < 15) return 'wind-light';
             if (speed < 30) return 'wind-mod';
             if (speed < 50) return 'wind-strong';
-            return 'wind-gale';
+            if (speed < 100) return 'wind-gale';
+            return 'wind-hurricane'; 
         }
 
         function renderGrid(hourlyData) {
@@ -205,7 +214,7 @@
                 
                 th.innerText = hourStr;
                 th.className = 'hour-header';
-                th.title = "Cliquez pour voir le profil vertical";
+                th.title = "Cliquez pour voir le profil vertical complet";
                 
                 th.onclick = () => drawSondage(i, hourStr);
                 
@@ -246,7 +255,7 @@
 
         function drawSondage(hourIndex, hourStr) {
             chartSection.style.display = 'block';
-            chartTitle.innerText = `Profil vertical (Pseudo Skew-T) à ${hourStr}`;
+            chartTitle.innerText = `Profil vertical troposphérique (Pseudo Skew-T) à ${hourStr}`;
 
             const reversedLevels = [...LEVELS].reverse();
             const yLabels = reversedLevels.map(l => `${l.alt} (${l.hpa} hPa)`);
@@ -317,7 +326,7 @@
                         },
                         y: {
                             title: { display: true, text: 'Altitude / Pression' },
-                            reverse: true // <-- L'ajout magique qui force le 0m à rester en bas
+                            reverse: true 
                         }
                     },
                     plugins: {
