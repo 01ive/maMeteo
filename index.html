@@ -214,9 +214,12 @@
                         const lat = station.location.latitude;
                         const lon = station.location.longitude;
                         
-                        const speed = station.measurements && station.measurements.wind_speed_avg !== null 
+                        // On extrait la valeur numérique pour le calcul de la couleur
+                        const speedVal = station.measurements && station.measurements.wind_speed_avg !== null 
                             ? Math.round(station.measurements.wind_speed_avg) 
-                            : '-';
+                            : null;
+                            
+                        const speed = speedVal !== null ? speedVal : '-';
                         
                         const heading = station.measurements && station.measurements.wind_heading !== null 
                             ? station.measurements.wind_heading 
@@ -226,11 +229,15 @@
                             ? station.meta.name 
                             : `Pioupiou #${station.id}`;
 
-                        // Nouveau design unifié : la flèche et la vitesse dans la même bulle
+                        // On récupère la classe CSS associée à la force du vent
+                        const colorClass = speedVal !== null ? getWindColorClass(speedVal) : '';
+
+                        // Injection de la classe "colorClass" dans la div principale.
+                        // La flèche et le texte hériteront automatiquement de la bonne couleur.
                         const iconHtml = `
                             <div style="position: absolute; transform: translate(-50%, -50%);">
-                                <div style="background: rgba(255,255,255,0.95); border: 1px solid #333; border-radius: 12px; padding: 3px 8px; font-size: 12px; font-weight: bold; color: #333; display: flex; align-items: center; gap: 6px; box-shadow: 0px 2px 4px rgba(0,0,0,0.3); white-space: nowrap;">
-                                    <span style="display: inline-block; transform: rotate(${heading}deg); color: #e74c3c; font-size: 15px;">↓</span>
+                                <div class="${colorClass}" style="background: rgba(255,255,255,0.95); border: 1px solid #ccc; border-radius: 12px; padding: 3px 8px; font-size: 12px; font-weight: bold; display: flex; align-items: center; gap: 6px; box-shadow: 0px 2px 4px rgba(0,0,0,0.3); white-space: nowrap;">
+                                    <span style="display: inline-block; transform: rotate(${heading}deg); font-size: 15px;">↓</span>
                                     <span>${speed}</span>
                                 </div>
                             </div>
@@ -239,18 +246,17 @@
                         const pioupiouIcon = L.divIcon({
                             className: 'pioupiou-marker',
                             html: iconHtml,
-                            iconSize: [0, 0], // On met 0,0 car le centrage est géré par le translate(-50%, -50%) du HTML
+                            iconSize: [0, 0],
                             popupAnchor: [0, -15]
                         });
 
-                        const marker = L.marker([lat, lon], { 
-                            icon: pioupiouIcon })
+                        L.marker([lat, lon], { icon: pioupiouIcon })
                             .addTo(pioupiouLayer)
                             .bindPopup(`
                                 <div style="text-align: center; font-family: sans-serif;">
                                     <strong style="font-size: 14px; color: #2980b9;">${name}</strong><br>
                                     <hr style="margin: 5px 0; border: 0; border-top: 1px solid #eee;">
-                                    Vent moyen : <b>${speed} km/h</b><br>
+                                    Vent moyen : <b class="${colorClass}">${speed} km/h</b><br>
                                     Direction : <b>${heading}°</b>
                                 </div>
                             `);
