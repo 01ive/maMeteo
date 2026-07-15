@@ -3,7 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sondage Vent - Dienne (Cantal)</title>
+    <title>Sondage Aérologique - Dienne</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         :root {
             --bg-color: #f4f4f9;
@@ -37,6 +38,7 @@
             background: white;
             border-radius: 8px;
             box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
         }
         table {
             border-collapse: collapse;
@@ -46,13 +48,22 @@
         th, td {
             border: 1px solid var(--border-color);
             padding: 8px;
-            width: 40px;
-            height: 40px;
+            width: 45px;
+            height: 45px;
         }
         th {
             background-color: #f8f9fa;
             font-weight: 600;
             font-size: 14px;
+        }
+        .hour-header {
+            cursor: pointer;
+            color: #2980b9;
+            text-decoration: underline;
+            transition: background-color 0.2s;
+        }
+        .hour-header:hover {
+            background-color: #e8f4f8;
         }
         .y-axis {
             text-align: right;
@@ -72,44 +83,61 @@
             font-size: 18px;
             transition: transform 0.3s ease;
         }
-        /* Couleurs pour l'intensité du vent */
-        .wind-light { color: #2ecc71; }   /* < 15 km/h */
-        .wind-mod   { color: #f1c40f; }   /* 15 - 30 km/h */
-        .wind-strong{ color: #e67e22; }   /* 30 - 50 km/h */
-        .wind-gale  { color: #e74c3c; }   /* > 50 km/h */
+        
+        .wind-light { color: #2ecc71; }
+        .wind-mod   { color: #f1c40f; }
+        .wind-strong{ color: #e67e22; }
+        .wind-gale  { color: #e74c3c; }
         
         #loading {
             margin-top: 20px;
             font-style: italic;
             color: #666;
         }
+
+        .chart-container {
+            width: 100%;
+            max-width: 800px;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            display: none; 
+        }
+        #chart-title {
+            text-align: center;
+            margin-top: 0;
+            color: #2c3e50;
+        }
     </style>
 </head>
 <body>
 
     <div class="header">
-        <h2>Prévisions des Vents en Altitude - Dienne (Cantal)</h2>
+        <h2>Aérologie & Vents - Dienne (Cantal)</h2>
         <label for="model-select">Modèle Météo : </label>
         <select id="model-select">
-            <option value="best_match">Meilleure correspondance (Auto)</option>
-            <option value="arome_france">AROME (Météo-France - Très HD)</option>
-            <option value="icon_d2">ICON-D2 (DWD - HD)</option>
-            <option value="gfs_seamless">GFS (NOAA - Global)</option>
+            <option value="best_match">Meilleure correspondance</option>
+            <option value="arome_france">AROME (Météo-France)</option>
+            <option value="icon_d2">ICON-D2 (DWD)</option>
+            <option value="gfs_seamless">GFS (NOAA)</option>
         </select>
         <div id="loading">Chargement des données...</div>
     </div>
 
     <div class="grid-container">
-        <table id="wind-grid">
-            </table>
+        <table id="wind-grid"></table>
+    </div>
+
+    <div class="chart-container" id="chart-section">
+        <h3 id="chart-title">Profil vertical</h3>
+        <canvas id="sondageChart"></canvas>
     </div>
 
     <script>
-        // Coordonnées pour Dienne, Cantal
         const LAT = 45.193;
         const LON = 2.808;
 
-        // Mapping des altitudes (approximatif) vers les niveaux de pression hPa
         const LEVELS = [
             { alt: "4000m", hpa: "600" },
             { alt: "3000m", hpa: "700" },
@@ -117,31 +145,38 @@
             { alt: "1500m", hpa: "850" },
             { alt: "1000m", hpa: "900" },
             { alt: "500m",  hpa: "950" },
-            { alt: "0m",    hpa: "1000" } // ~Niveau de la mer, Dienne est plus haut (1000m), donc les niveaux < 900hPa seront sous terre selon le modèle.
+            { alt: "0m",    hpa: "1000" }
         ];
+
+        let globalWeatherData = null;
+        let sondageChartInstance = null;
 
         const modelSelect = document.getElementById('model-select');
         const windGrid = document.getElementById('wind-grid');
         const loadingDiv = document.getElementById('loading');
+        const chartSection = document.getElementById('chart-section');
+        const chartTitle = document.getElementById('chart-title');
 
-        // Génère les chaînes de requête pour l'API
         const windSpeedVars = LEVELS.map(l => `windspeed_${l.hpa}hPa`).join(',');
         const windDirVars = LEVELS.map(l => `winddirection_${l.hpa}hPa`).join(',');
+        const tempVars = LEVELS.map(l => `temperature_${l.hpa}hPa`).join(',');
+        const dewVars = LEVELS.map(l => `dewpoint_${l.hpa}hPa`).join(',');
 
         async function fetchWeatherData(model) {
             loadingDiv.style.display = 'block';
-            windGrid.innerHTML = ''; // Clear table
+            windGrid.innerHTML = '';
+            chartSection.style.display = 'none';
 
-            // URL Open-Meteo
-            const url = `https://api.open-meteo.com/v1/forecast?latitude=${LAT}&longitude=${LON}&hourly=${windSpeedVars},${windDirVars}&models=${model}&forecast_days=1&timezone=Europe%2FBerlin`;
+            const url = `https://api.open-meteo.com/v1/forecast?latitude=${LAT}&longitude=${LON}&hourly=${windSpeedVars},${windDirVars},${tempVars},${dewVars}&models=${model}&forecast_days=1&timezone=Europe%2FBerlin`;
 
             try {
                 const response = await fetch(url);
                 const data = await response.json();
-                renderGrid(data.hourly);
+                globalWeatherData = data.hourly;
+                renderGrid(globalWeatherData);
             } catch (error) {
-                console.error("Erreur lors de la récupération des données :", error);
-                windGrid.innerHTML = "<tr><td>Erreur de chargement. Veuillez réessayer.</td></tr>";
+                console.error("Erreur API :", error);
+                windGrid.innerHTML = "<tr><td>Erreur de chargement.</td></tr>";
             } finally {
                 loadingDiv.style.display = 'none';
             }
@@ -156,43 +191,43 @@
 
         function renderGrid(hourlyData) {
             const table = document.createElement('tbody');
-
-            // --- LIGNE D'EN-TÊTE (Heures) ---
             const headerRow = document.createElement('tr');
-            headerRow.appendChild(document.createElement('th')); // Coin vide en haut à gauche
             
-            // On prend les 24 premières heures
+            const emptyTh = document.createElement('th');
+            emptyTh.innerText = "Heure (Cliquez \u2192)";
+            emptyTh.style.fontSize = "11px";
+            headerRow.appendChild(emptyTh);
+            
             for (let i = 0; i < 24; i++) {
                 const th = document.createElement('th');
                 const date = new Date(hourlyData.time[i]);
-                th.innerText = `${date.getHours()}h`;
+                const hourStr = `${date.getHours()}h`;
+                
+                th.innerText = hourStr;
+                th.className = 'hour-header';
+                th.title = "Cliquez pour voir le profil vertical";
+                
+                th.onclick = () => drawSondage(i, hourStr);
+                
                 headerRow.appendChild(th);
             }
             table.appendChild(headerRow);
 
-            // --- LIGNES DE DONNÉES (Altitudes) ---
             LEVELS.forEach(level => {
                 const row = document.createElement('tr');
-                
-                // Cellule Y-Axis (Altitude)
                 const thY = document.createElement('th');
                 thY.className = 'y-axis';
                 thY.innerText = `${level.alt} (${level.hpa}hPa)`;
                 row.appendChild(thY);
 
-                // Cellules de données pour chaque heure
                 for (let i = 0; i < 24; i++) {
                     const td = document.createElement('td');
-                    
                     const speed = Math.round(hourlyData[`windspeed_${level.hpa}hPa`][i]);
                     const direction = hourlyData[`winddirection_${level.hpa}hPa`][i];
 
-                    // Si la donnée est nulle (ex: sous la surface pour certains modèles)
-                    if (speed === null || speed === undefined) {
+                    if (speed === null || isNaN(speed)) {
                         td.innerText = "-";
                     } else {
-                        // En météo, une direction de 0° (Nord) signifie que le vent vient du nord et va vers le sud.
-                        // La flèche (↓) pointe naturellement vers le bas. Une rotation de la valeur de la direction fait pointer la flèche dans le sens du flux.
                         const colorClass = getWindColorClass(speed);
                         td.innerHTML = `
                             <div class="cell-content ${colorClass}">
@@ -209,12 +244,106 @@
             windGrid.appendChild(table);
         }
 
-        // Écouteur sur la liste déroulante
+        function drawSondage(hourIndex, hourStr) {
+            chartSection.style.display = 'block';
+            chartTitle.innerText = `Profil vertical (Pseudo Skew-T) à ${hourStr}`;
+
+            const reversedLevels = [...LEVELS].reverse();
+            const yLabels = reversedLevels.map(l => `${l.alt} (${l.hpa} hPa)`);
+            
+            const originalTemperatures = reversedLevels.map(l => {
+                const val = globalWeatherData[`temperature_${l.hpa}hPa`][hourIndex];
+                return val !== null && val !== undefined ? val : null;
+            });
+            const originalDewpoints = reversedLevels.map(l => {
+                const val = globalWeatherData[`dewpoint_${l.hpa}hPa`][hourIndex];
+                return val !== null && val !== undefined ? val : null;
+            });
+
+            const SKEW_FACTOR = 0.04; 
+            
+            const skewedTemperatures = originalTemperatures.map((t, i) => {
+                if (t === null) return null;
+                const p = parseInt(reversedLevels[i].hpa);
+                return t + (1000 - p) * SKEW_FACTOR;
+            });
+
+            const skewedDewpoints = originalDewpoints.map((t, i) => {
+                if (t === null) return null;
+                const p = parseInt(reversedLevels[i].hpa);
+                return t + (1000 - p) * SKEW_FACTOR;
+            });
+
+            const ctx = document.getElementById('sondageChart').getContext('2d');
+
+            if (sondageChartInstance) {
+                sondageChartInstance.destroy();
+            }
+
+            sondageChartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: yLabels, 
+                    datasets: [
+                        {
+                            label: 'Température (°C)',
+                            data: skewedTemperatures,
+                            borderColor: '#e74c3c',
+                            backgroundColor: '#e74c3c',
+                            tension: 0.1,
+                            pointRadius: 4
+                        },
+                        {
+                            label: 'Point de rosée (°C)',
+                            data: skewedDewpoints,
+                            borderColor: '#3498db',
+                            backgroundColor: '#3498db',
+                            borderDash: [5, 5],
+                            tension: 0.1,
+                            pointRadius: 4
+                        }
+                    ]
+                },
+                options: {
+                    indexAxis: 'y', 
+                    responsive: true,
+                    scales: {
+                        x: {
+                            title: { display: true, text: 'Température de référence à 1000 hPa (°C)' },
+                            position: 'bottom',
+                            grid: {
+                                display: false 
+                            }
+                        },
+                        y: {
+                            title: { display: true, text: 'Altitude / Pression' },
+                            reverse: true // <-- L'ajout magique qui force le 0m à rester en bas
+                        }
+                    },
+                    plugins: {
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const index = context.dataIndex;
+                                    const isTemp = context.datasetIndex === 0;
+                                    const realValue = isTemp ? originalTemperatures[index] : originalDewpoints[index];
+                                    return realValue !== null 
+                                        ? `${context.dataset.label}: ${realValue.toFixed(1)}°C`
+                                        : `${context.dataset.label}: N/A`;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+            
+            chartSection.scrollIntoView({ behavior: 'smooth' });
+        }
+
         modelSelect.addEventListener('change', (e) => {
             fetchWeatherData(e.target.value);
         });
 
-        // Chargement initial
         fetchWeatherData(modelSelect.value);
     </script>
 </body>
