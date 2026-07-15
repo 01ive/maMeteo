@@ -250,14 +250,25 @@
                             popupAnchor: [0, -15]
                         });
 
+                        // Extraction des données Pioupiou
+                        const min = station.measurements && station.measurements.wind_speed_min !== null ? station.measurements.wind_speed_min : '-';
+                        const max = station.measurements && station.measurements.wind_speed_max !== null ? station.measurements.wind_speed_max : '-';
+                        const dirDegrees = station.measurements && station.measurements.wind_heading !== null ? station.measurements.wind_heading : 0;
+                        const cardinal = getCardinalDirection(dirDegrees);
+
+                        // Construction du Popup
                         L.marker([lat, lon], { icon: pioupiouIcon })
                             .addTo(pioupiouLayer)
                             .bindPopup(`
-                                <div style="text-align: center; font-family: sans-serif;">
+                                <div style="text-align: center; font-family: sans-serif; line-height: 1.4;">
                                     <strong style="font-size: 14px; color: #2980b9;">${name}</strong><br>
-                                    <hr style="margin: 5px 0; border: 0; border-top: 1px solid #eee;">
-                                    Vent moyen : <b class="${colorClass}">${speed} km/h</b><br>
-                                    Direction : <b>${heading}°</b>
+                                    <div style="font-size: 12px; margin-top: 5px;">
+                                        Vent : <span class="${colorClass}"><b>${speed} km/h</b></span> (${cardinal})<br>
+                                        <div style="display: flex; justify-content: space-between; gap: 10px; font-size: 11px; color: #555; margin-top: 5px;">
+                                            <span>Min: ${min}</span>
+                                            <span>Max: ${max}</span>
+                                        </div>
+                                    </div>
                                 </div>
                             `);
                     });
@@ -329,6 +340,11 @@
         const windDirVars = LEVELS.map(l => `winddirection_${l.hpa}hPa`).join(',');
         const tempVars = LEVELS.map(l => `temperature_${l.hpa}hPa`).join(',');
         const dewVars = LEVELS.map(l => `dewpoint_${l.hpa}hPa`).join(',');
+
+        function getCardinalDirection(angle) {
+            const directions = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW', 'N'];
+            return directions[Math.round(angle / 45)];
+        }
 
         function updateDateDisplay() {
             const options = { weekday: 'short', day: 'numeric', month: 'short' };
