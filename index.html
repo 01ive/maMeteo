@@ -116,7 +116,6 @@
             padding: 4px;
             width: 40px;
             height: 40px;
-            /* Transition fluide si la case change de couleur */
             transition: background-color 0.3s;
         }
         th {
@@ -151,7 +150,6 @@
             justify-content: center;
             font-size: 11px;
             font-weight: bold;
-            /* Empêche le texte de devenir invisible sur fond gris */
             text-shadow: 0px 0px 2px rgba(255,255,255,0.8);
         }
         .arrow { display: inline-block; font-size: 16px; transition: transform 0.3s ease; }
@@ -216,7 +214,6 @@
 
         const map = L.map('map').setView([currentLat, currentLon], 11);
         
-        // Utilisation du fond de carte IGN (Plan IGN) pour éviter les blocages locaux et avoir un excellent rendu de montagne
         L.tileLayer('https://data.geopf.fr/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=GEOGRAPHICALGRIDSYSTEMS.PLANIGNV2&STYLE=normal&FORMAT=image/png&TILEMATRIXSET=PM&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}', {
             maxZoom: 19,
             attribution: '© <a href="https://www.ign.fr/">IGN</a> - Géoportail'
@@ -373,21 +370,37 @@
                     const speed = Math.round(hourlyData[`windspeed_${level.hpa}hPa`][i]);
                     const direction = hourlyData[`winddirection_${level.hpa}hPa`][i];
                     
-                    // --- DÉTECTION DES NUAGES VIA LA TEMPÉRATURE ET LE POINT DE ROSÉE ---
                     const temp = hourlyData[`temperature_${level.hpa}hPa`][i];
                     const dew = hourlyData[`dewpoint_${level.hpa}hPa`][i];
 
                     if (temp !== null && dew !== null) {
                         const spread = temp - dew;
-                        if (spread <= 1.5) {
-                            // Nuage dense
-                            td.style.backgroundColor = 'rgba(170, 180, 190, 0.7)';
-                        } else if (spread <= 3) {
-                            // Air très humide, nuage léger ou brouillard
-                            td.style.backgroundColor = 'rgba(170, 180, 190, 0.25)';
+                        
+                        // --- NOUVELLE LOGIQUE DYNAMIQUE ---
+                        // Ajustement des seuils de tolérance pour la formation des nuages en fonction de la température
+                        let denseThreshold = 1.5;
+                        let lightThreshold = 3.0;
+
+                        if (temp < -30) {
+                            // Très haute altitude (Cirrus) : saturation en glace facile
+                            denseThreshold = 5.0;
+                            lightThreshold = 8.0;
+                        } else if (temp < -10) {
+                            // Étage moyen / haut : nuages mixtes ou glacés
+                            denseThreshold = 3.0;
+                            lightThreshold = 5.0;
+                        } else if (temp < 0) {
+                            // Couches inférieures juste sous zéro
+                            denseThreshold = 2.0;
+                            lightThreshold = 4.0;
+                        }
+
+                        if (spread <= denseThreshold) {
+                            td.style.backgroundColor = 'rgba(170, 180, 190, 0.7)'; // Nuage dense
+                        } else if (spread <= lightThreshold) {
+                            td.style.backgroundColor = 'rgba(170, 180, 190, 0.25)'; // Nuage léger / Voile
                         } else {
-                            // Ciel clair : on remet le fond transparent
-                            td.style.backgroundColor = 'transparent';
+                            td.style.backgroundColor = 'transparent'; // Ciel clair
                         }
                     }
 
