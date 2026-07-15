@@ -34,7 +34,6 @@
             margin-top: 10px;
         }
         
-        /* Nouveaux styles pour les contrôles de date */
         .date-controls {
             display: flex;
             align-items: center;
@@ -93,11 +92,18 @@
             cursor: pointer;
             color: #2980b9;
             text-decoration: underline;
-            transition: background-color 0.2s;
+            transition: all 0.2s;
         }
         .hour-header:hover {
             background-color: #e8f4f8;
         }
+        /* Nouvelle classe pour l'heure actuellement sélectionnée */
+        .hour-header.active {
+            background-color: #2980b9;
+            color: white;
+            text-decoration: none;
+        }
+
         .y-axis {
             text-align: right;
             padding-right: 15px;
@@ -127,7 +133,7 @@
             margin-top: 10px;
             font-style: italic;
             color: #666;
-            height: 20px; /* Evite que la page saute au chargement */
+            height: 20px; 
         }
 
         .chart-container {
@@ -197,7 +203,7 @@
 
         let globalWeatherData = null;
         let sondageChartInstance = null;
-        let currentDate = new Date(); // Initialisation à la date du jour
+        let currentDate = new Date(); 
 
         const modelSelect = document.getElementById('model-select');
         const windGrid = document.getElementById('wind-grid');
@@ -214,13 +220,11 @@
         const tempVars = LEVELS.map(l => `temperature_${l.hpa}hPa`).join(',');
         const dewVars = LEVELS.map(l => `dewpoint_${l.hpa}hPa`).join(',');
 
-        // Formate la date pour l'affichage UI (ex: "Mercredi 15 Juillet 2026")
         function updateDateDisplay() {
             const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
             dateDisplay.innerText = currentDate.toLocaleDateString('fr-FR', options);
         }
 
-        // Formate la date pour l'API (AAAA-MM-JJ)
         function getApiDateString(date) {
             const year = date.getFullYear();
             const month = String(date.getMonth() + 1).padStart(2, '0');
@@ -236,19 +240,20 @@
 
             const dateStr = getApiDateString(currentDate);
 
-            // Remplacement de forecast_days par start_date et end_date
             const url = `https://api.open-meteo.com/v1/forecast?latitude=${LAT}&longitude=${LON}&hourly=${windSpeedVars},${windDirVars},${tempVars},${dewVars}&models=${model}&start_date=${dateStr}&end_date=${dateStr}&timezone=Europe%2FBerlin`;
 
             try {
                 const response = await fetch(url);
                 const data = await response.json();
                 
-                if (data.error) {
-                    throw new Error(data.reason);
-                }
+                if (data.error) throw new Error(data.reason);
 
                 globalWeatherData = data.hourly;
                 renderGrid(globalWeatherData);
+                
+                // --- NOUVEAUTÉ : Affichage automatique de 12h00 sans scroll ---
+                drawSondage(12, "12h", false); 
+
             } catch (error) {
                 console.error("Erreur API :", error);
                 windGrid.innerHTML = `<tr><td style="color: red; padding: 20px;">Données indisponibles pour cette date (${error.message || "Erreur réseau"}).</td></tr>`;
@@ -257,7 +262,6 @@
             }
         }
 
-        // Gestionnaires d'événements pour les boutons de date
         btnPrev.addEventListener('click', () => {
             currentDate.setDate(currentDate.getDate() - 1);
             updateDateDisplay();
@@ -270,11 +274,9 @@
             fetchWeatherData();
         });
 
-        // Mise à jour lors du changement de modèle
         modelSelect.addEventListener('change', () => {
             fetchWeatherData();
         });
-
 
         function getWindColorClass(speed) {
             if (speed < 15) return 'wind-light';
@@ -289,8 +291,8 @@
             const headerRow = document.createElement('tr');
             
             const emptyTh = document.createElement('th');
-            emptyTh.innerText = "Heure (Cliquez \u2192)";
-            emptyTh.style.fontSize = "11px";
+            emptyTh.innerText = "Heure";
+            emptyTh.style.fontSize = "12px";
             headerRow.appendChild(emptyTh);
             
             for (let i = 0; i < 24; i++) {
@@ -300,9 +302,11 @@
                 
                 th.innerText = hourStr;
                 th.className = 'hour-header';
+                th.id = `hour-header-${i}`; // Ajout d'un ID pour cibler l'heure sélectionnée
                 th.title = "Cliquez pour voir le profil vertical complet";
                 
-                th.onclick = () => drawSondage(i, hourStr);
+                // Appel avec autoScroll = true lors du clic utilisateur
+                th.onclick = () => drawSondage(i, hourStr, true);
                 
                 headerRow.appendChild(th);
             }
@@ -318,7 +322,6 @@
                 for (let i = 0; i < 24; i++) {
                     const td = document.createElement('td');
                     
-                    // Sécurité au cas où l'API renvoie des tableaux incomplets
                     if (!hourlyData[`windspeed_${level.hpa}hPa`] || hourlyData[`windspeed_${level.hpa}hPa`][i] === undefined) {
                         td.innerText = "-";
                         row.appendChild(td);
@@ -347,9 +350,15 @@
             windGrid.appendChild(table);
         }
 
-        function drawSondage(hourIndex, hourStr) {
+        // --- NOUVEAUTÉ : Ajout du paramètre autoScroll (vrai par défaut) ---
+        function drawSondage(hourIndex, hourStr, autoScroll = true) {
             chartSection.style.display = 'block';
             chartTitle.innerText = `Profil vertical troposphérique à ${hourStr} (${dateDisplay.innerText})`;
+
+            // Mise à jour visuelle : retirer la classe active de tous, puis l'ajouter à la sélection
+            document.querySelectorAll('.hour-header').forEach(el => el.classList.remove('active'));
+            const activeHeader = document.getElementById(`hour-header-${hourIndex}`);
+            if (activeHeader) activeHeader.classList.add('active');
 
             const reversedLevels = [...LEVELS].reverse();
             const yLabels = reversedLevels.map(l => `${l.alt} (${l.hpa} hPa)`);
@@ -363,7 +372,7 @@
                 return val !== null && val !== undefined ? val : null;
             });
 
-            const SKEW_FACTOR = 0.09; 
+            const SKEW_FACTOR = 0.04; 
             
             const skewedTemperatures = originalTemperatures.map((t, i) => {
                 if (t === null) return null;
@@ -441,9 +450,7 @@
                         x: {
                             title: { display: true, text: 'Température de référence à 1000 hPa (°C)' },
                             position: 'bottom',
-                            grid: {
-                                display: false 
-                            }
+                            grid: { display: false }
                         },
                         y: {
                             title: { display: true, text: 'Altitude / Pression' },
@@ -467,10 +474,12 @@
                 }
             });
             
-            chartSection.scrollIntoView({ behavior: 'smooth' });
+            // --- NOUVEAUTÉ : Contrôle du scroll automatique ---
+            if (autoScroll) {
+                chartSection.scrollIntoView({ behavior: 'smooth' });
+            }
         }
 
-        // Lancement initial
         updateDateDisplay();
         fetchWeatherData();
     </script>
