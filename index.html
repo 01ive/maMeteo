@@ -137,6 +137,28 @@
         
         /* Nettoyage du style de l'icône divIcon Leaflet */
         .pioupiou-marker { background: none; border: none; }
+
+        #pioupiou-widget-container {
+            position: absolute; 
+            bottom: 20px; 
+            left: 60px; 
+            z-index: 1000; 
+            background: white; 
+            border-radius: 8px; 
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3); 
+            overflow: hidden; 
+            display: none;
+            /* Force les dimensions */
+            /* width: 250px !important; 
+            min-height: 200px !important; */
+        }
+
+        /* Force le widget à prendre toute la place disponible dans son conteneur */
+        .owm-widget {
+            width: 100% !important;
+            height: 100% !important;
+            display: block;
+        }
     </style>
 </head>
 <body>
@@ -145,7 +167,7 @@
         <div id="map"></div>
     </div>
 
-    <div id="pioupiou-widget-container" style="position: absolute; bottom: 20px; left: 20px; z-index: 1000; background: white; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.3); overflow: hidden; display: none;">
+    <div id="pioupiou-widget-container">
     </div>
 
     <div id="right-panel">
@@ -289,8 +311,6 @@
                             const widgetId = `PP${station.id}`; 
                             
                             container.style.display = 'block';
-                            container.style.width = '200px';
-                            container.style.height = '230px';
                             
                             // 1. On vide le conteneur
                             container.innerHTML = `
