@@ -88,7 +88,7 @@
         .wind-mod   { color: #f1c40f; }
         .wind-strong{ color: #e67e22; }
         .wind-gale  { color: #e74c3c; }
-        .wind-hurricane { color: #8e44ad; } /* Nouvelle couleur pour les vents extrêmes d'altitude (> 100 km/h) */
+        .wind-hurricane { color: #8e44ad; }
         
         #loading {
             margin-top: 20px;
@@ -139,7 +139,6 @@
         const LAT = 45.193;
         const LON = 2.808;
 
-        // Mise à jour : Extension des niveaux jusqu'à la limite de la troposphère (~11.8 km)
         const LEVELS = [
             { alt: "11800m", hpa: "200" },
             { alt: "10500m", hpa: "250" },
@@ -189,7 +188,6 @@
             }
         }
 
-        // Ajout d'une couleur violette pour les vents très violents (typiques à 9000m+)
         function getWindColorClass(speed) {
             if (speed < 15) return 'wind-light';
             if (speed < 30) return 'wind-mod';
@@ -297,10 +295,40 @@
                         {
                             label: 'Température (°C)',
                             data: skewedTemperatures,
-                            borderColor: '#e74c3c',
-                            backgroundColor: '#e74c3c',
-                            tension: 0.1,
-                            pointRadius: 4
+                            // Couleur de base (sera écrasée par la fonction segment)
+                            borderColor: '#333', 
+                            backgroundColor: '#333',
+                            tension: 0, // Lignes droites
+                            pointRadius: 4,
+                            // MAGIE ICI : Coloration conditionnelle des segments
+                            segment: {
+                                borderColor: ctx => {
+                                    if (ctx.p0DataIndex === undefined || ctx.p1DataIndex === undefined) return '#333';
+                                    
+                                    const i0 = ctx.p0DataIndex; // Point bas
+                                    const i1 = ctx.p1DataIndex; // Point haut
+                                    
+                                    // Extraction des altitudes en nombre (ex: "500m" -> 500)
+                                    const z0 = parseInt(reversedLevels[i0].alt);
+                                    const z1 = parseInt(reversedLevels[i1].alt);
+                                    
+                                    // Températures réelles
+                                    const t0 = originalTemperatures[i0];
+                                    const t1 = originalTemperatures[i1];
+
+                                    if (t0 === null || t1 === null) return '#333';
+
+                                    const dz = z1 - z0; // Différence d'altitude
+                                    const dt = t0 - t1; // Perte de température
+                                    
+                                    // Calcul du gradient : chute de température par 100m
+                                    const lapseRate = (dt / dz) * 100;
+
+                                    if (lapseRate < 0.6) return '#2ecc71'; // Vert : Stable
+                                    if (lapseRate > 0.9) return '#e74c3c'; // Rouge : Instable
+                                    return '#000000'; // Noir : Conditionnel
+                                }
+                            }
                         },
                         {
                             label: 'Point de rosée (°C)',
@@ -308,7 +336,7 @@
                             borderColor: '#3498db',
                             backgroundColor: '#3498db',
                             borderDash: [5, 5],
-                            tension: 0.1,
+                            tension: 0, // Lignes droites
                             pointRadius: 4
                         }
                     ]
