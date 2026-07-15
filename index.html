@@ -256,21 +256,29 @@
                         const dirDegrees = station.measurements && station.measurements.wind_heading !== null ? station.measurements.wind_heading : 0;
                         const cardinal = getCardinalDirection(dirDegrees);
 
-                        // Construction du Popup
-                        L.marker([lat, lon], { icon: pioupiouIcon })
-                            .addTo(pioupiouLayer)
-                            .bindPopup(`
+                        // Création du marqueur
+                        const marker = L.marker([lat, lon], { icon: pioupiouIcon }).addTo(pioupiouLayer);
+
+                        // Ouverture du popup au survol
+                        marker.on('mouseover', function(e) {
+                            this.bindPopup(`
                                 <div style="text-align: center; font-family: sans-serif; line-height: 1.4;">
                                     <strong style="font-size: 14px; color: #2980b9;">${name}</strong><br>
                                     <div style="font-size: 12px; margin-top: 5px;">
-                                        Vent : <span class="${colorClass}"><b>${speed} km/h</b></span> (${cardinal})<br>
+                                        Vent : <b>${speed} km/h</b> <span class="${colorClass}">(${cardinal})</span><br>
                                         <div style="display: flex; justify-content: space-between; gap: 10px; font-size: 11px; color: #555; margin-top: 5px;">
                                             <span>Min: ${min}</span>
                                             <span>Max: ${max}</span>
                                         </div>
                                     </div>
                                 </div>
-                            `);
+                            `).openPopup();
+                        });
+
+                        // Fermeture du popup quand on sort de la zone
+                        marker.on('mouseout', function(e) {
+                            this.closePopup();
+                        });
                     });
                 }
             } catch (error) {
