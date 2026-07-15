@@ -94,6 +94,29 @@
         .date-controls button:hover { background-color: #e8f4f8; border-color: #2980b9; }
         .date-controls h3 { margin: 0; font-size: 15px; text-align: center; color: #2c3e50; text-transform: capitalize; }
 
+        .grid-chart-layout {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            width: 100%;
+        }
+        .grid-chart-layout .grid-container,
+        .grid-chart-layout .chart-container {
+            width: 100%;
+            min-width: 0;
+        }
+        .compact-view .grid-chart-layout {
+            flex-direction: row;
+            align-items: flex-start;
+        }
+        .compact-view .grid-chart-layout .grid-container {
+            flex: 1 1 0;
+        }
+        .compact-view .grid-chart-layout .chart-container {
+            flex: 0 0 320px;
+            max-width: 320px;
+        }
+
         .grid-container {
             overflow-x: auto;
             background: white;
@@ -110,6 +133,8 @@
         table { border-collapse: collapse; text-align: center; table-layout: fixed; width: auto; }
         th, td { border: 1px solid var(--border-color); padding: 4px; width: 40px; min-width: 40px; height: 40px; transition: background-color 0.3s; }
         th { background-color: #f8f9fa; font-weight: 600; font-size: 12px; position: sticky; left: 0; z-index: 2; }
+
+        .chart-container { background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); display: none; min-width: 260px; }
         
         .hour-header { cursor: pointer; color: #2980b9; text-decoration: underline; transition: all 0.2s; position: static; z-index: 1; }
         .hour-header:hover { background-color: #e8f4f8; }
@@ -196,18 +221,20 @@
             <div id="loading">Chargement des données...</div>
         </div>
 
-        <div class="grid-container">
-            <table id="wind-grid"></table>
-            <div class="legend-box">
-                <div class="legend-item"><div class="legend-color" style="background: rgba(170, 180, 190, 0.7);"></div> Nuages</div>
-                <div class="legend-item"><div class="legend-color" style="border-bottom: 3px solid #e74c3c; height: 3px; background: transparent;"></div> Plafond Thermique</div>
+        <div class="grid-chart-layout">
+            <div class="grid-container">
+                <table id="wind-grid"></table>
+                <div class="legend-box">
+                    <div class="legend-item"><div class="legend-color" style="background: rgba(170, 180, 190, 0.7);"></div> Nuages</div>
+                    <div class="legend-item"><div class="legend-color" style="border-bottom: 3px solid #e74c3c; height: 3px; background: transparent;"></div> Plafond Thermique</div>
+                </div>
             </div>
-        </div>
 
-        <div class="chart-container" id="chart-section">
-            <h3 id="chart-title">Profil vertical</h3>
-            <div class="canvas-wrapper">
-                <canvas id="sondageChart"></canvas>
+            <div class="chart-container" id="chart-section">
+                <h3 id="chart-title">Profil vertical</h3>
+                <div class="canvas-wrapper">
+                    <canvas id="sondageChart"></canvas>
+                </div>
             </div>
         </div>
     </div>
@@ -406,6 +433,7 @@
         const compactModeRows = ["0m", "1000m", "2000m", "3000m", "4000m"];
         const compactModeHours = [9, 13, 17];
         let isCompactView = false;
+        let selectedHourIndex = 12;
 
         function getCardinalDirection(angle) {
             const directions = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW', 'N'];
@@ -458,6 +486,7 @@
         modelSelect.addEventListener('change', () => { fetchWeatherData(); });
         toggleViewBtn.addEventListener('click', () => {
             isCompactView = !isCompactView;
+            document.body.classList.toggle('compact-view', isCompactView);
             toggleViewBtn.innerText = isCompactView ? 'Mode complet' : 'Mode réduit';
             if (globalWeatherData) {
                 renderGrid(globalWeatherData);
@@ -618,9 +647,16 @@
             });
 
             windGrid.appendChild(table);
+
+            const chosenHourIndex = visibleHourIndices.includes(selectedHourIndex)
+                ? selectedHourIndex
+                : visibleHourIndices[0];
+            const chosenDate = new Date(hourlyData.time[chosenHourIndex]);
+            drawSondage(chosenHourIndex, `${chosenDate.getHours()}h`, false);
         }
 
         function drawSondage(hourIndex, hourStr, autoScroll = true) {
+            selectedHourIndex = hourIndex;
             chartSection.style.display = 'block';
             chartTitle.innerText = `Profil à ${hourStr}`;
 
@@ -640,7 +676,6 @@
                 return val !== null && val !== undefined ? val : null;
             });
 
-            // UTILISATION DE TON SKEW_FACTOR
             const SKEW_FACTOR = 0.08; 
             
             const skewedTemperatures = originalTemperatures.map((t, i) => {
@@ -661,21 +696,17 @@
                 sondageChartInstance.destroy();
             }
 
-            sondageChartInstance = new Chart(ctx, {
-                type: 'line',
-                data: {
-                    labels: yLabels, 
-                    datasets: [
-                        {
-                            label: 'Température (°C)',
-                            data: skewedTemperatures,
-                            borderColor: '#333', 
-                            backgroundColor: '#333',
-                            tension: 0, 
-                            pointRadius: 0,
-                            pointHitRadius: 10,
-                            segment: {
-                                borderColor: ctx => {
+            const datasets = [
+                {
+                    label: 'Température (°C)',
+                    data: skewedTemperatures,
+                    borderColor: '#333',
+                    backgroundColor: '#333',
+                    tension: 0,
+                    pointRadius: 0,
+                    pointHitRadius: 10,
+                    segment: {
+                        borderColor: ctx => {
                                     if (ctx.p0DataIndex === undefined || ctx.p1DataIndex === undefined) return '#333';
                                     
                                     const i0 = ctx.p0DataIndex; 
@@ -699,18 +730,27 @@
                                     return '#000000'; 
                                 }
                             }
-                        },
-                        {
-                            label: 'Pt Rosée (°C)',
-                            data: skewedDewpoints,
-                            borderColor: '#3498db',
-                            backgroundColor: '#3498db',
-                            borderDash: [5, 5],
-                            tension: 0,
-                            pointRadius: 0,
-                            pointHitRadius: 10
                         }
-                    ]
+                    ];
+
+            if (!isCompactView) {
+                datasets.push({
+                    label: 'Pt Rosée (°C)',
+                    data: skewedDewpoints,
+                    borderColor: '#3498db',
+                    backgroundColor: '#3498db',
+                    borderDash: [5, 5],
+                    tension: 0,
+                    pointRadius: 0,
+                    pointHitRadius: 10
+                });
+            }
+
+            sondageChartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: yLabels, 
+                    datasets
                 },
                 options: {
                     indexAxis: 'y', 
@@ -735,8 +775,7 @@
                             callbacks: {
                                 label: function(context) {
                                     const index = context.dataIndex;
-                                    const isTemp = context.datasetIndex === 0;
-                                    const realValue = isTemp ? originalTemperatures[index] : originalDewpoints[index];
+                                    const realValue = originalTemperatures[index];
                                     return realValue !== null 
                                         ? `${context.dataset.label}: ${realValue.toFixed(1)}°C`
                                         : `${context.dataset.label}: N/A`;
