@@ -166,6 +166,17 @@
         #chart-title { text-align: center; margin-top: 0; font-size: 15px; color: #2c3e50; margin-bottom: 15px; }
         
         .canvas-wrapper { position: relative; height: 350px; width: 100%; }
+        
+        .legend-box {
+            font-size: 11px;
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-top: 8px;
+            color: #555;
+        }
+        .legend-item { display: flex; align-items: center; gap: 5px; }
+        .legend-color { width: 12px; height: 12px; border: 1px solid #ccc; }
     </style>
 </head>
 <body>
@@ -176,7 +187,7 @@
 
     <div id="right-panel">
         <div class="header">
-            <h2>Aérologie : <span id="location-name">Dienne</span></h2>
+            <h2>Aérologie : <span id="location-name">Puy Mary</span></h2>
             <div style="font-size: 12px; color: #666; margin-bottom: 10px;" id="coords-display">45.193°N, 2.808°E</div>
             
             <label for="model-select" style="font-size: 13px;">Modèle Météo :</label><br>
@@ -198,6 +209,10 @@
 
         <div class="grid-container">
             <table id="wind-grid"></table>
+            <div class="legend-box">
+                <div class="legend-item"><div class="legend-color" style="background: rgba(170, 180, 190, 0.7);"></div> Nuages</div>
+                <div class="legend-item"><div class="legend-color" style="border-bottom: 3px solid #e74c3c; height: 3px; background: transparent;"></div> Plafond Thermique</div>
+            </div>
         </div>
 
         <div class="chart-container" id="chart-section">
@@ -209,8 +224,8 @@
     </div>
 
     <script>
-        let currentLat = 45.193; 
-        let currentLon = 2.808;
+        let currentLat = 45.109; 
+        let currentLon = 2.676;
 
         const map = L.map('map').setView([currentLat, currentLon], 11);
         
@@ -257,6 +272,8 @@
             { alt: "0m",     hpa: "1000" }
         ];
 
+        // --- NOUVELLE VARIABLE POUR STOCKER L'ALTITUDE RÉELLE ---
+        let globalElevation = 0;
         let globalWeatherData = null;
         let sondageChartInstance = null;
         let currentDate = new Date(); 
@@ -295,7 +312,8 @@
             chartSection.style.display = 'none';
 
             const dateStr = getApiDateString(currentDate);
-            const url = `https://api.open-meteo.com/v1/forecast?latitude=${currentLat}&longitude=${currentLon}&hourly=${windSpeedVars},${windDirVars},${tempVars},${dewVars}&models=${model}&start_date=${dateStr}&end_date=${dateStr}&timezone=Europe%2FBerlin`;
+            // AJOUT DE temperature_2m DANS L'URL POUR AVOIR LA TEMPÉRATURE RÉELLE AU SOL
+            const url = `https://api.open-meteo.com/v1/forecast?latitude=${currentLat}&longitude=${currentLon}&hourly=${windSpeedVars},${windDirVars},${tempVars},${dewVars},temperature_2m&models=${model}&start_date=${dateStr}&end_date=${dateStr}&timezone=Europe%2FBerlin`;
 
             try {
                 const response = await fetch(url);
@@ -303,7 +321,10 @@
                 
                 if (data.error) throw new Error(data.reason);
 
+                // On récupère l'altitude que le modèle météo considère comme le "sol"
+                globalElevation = data.elevation || 0; 
                 globalWeatherData = data.hourly;
+                
                 renderGrid(globalWeatherData);
                 drawSondage(12, "12h", false); 
 
@@ -351,7 +372,44 @@
             }
             table.appendChild(headerRow);
 
-            LEVELS.forEach(level => {
+            // --- CORRECTION DU CALCUL DES THERMIQUES ---
+            const thermalTops = [];
+            for (let i = 0; i < 24; i++) {
+                let currentTopIdx = 11; 
+                
+                // On utilise la vraie température à 2m du sol
+                if (hourlyData.temperature_2m && hourlyData.temperature_2m[i] !== undefined) {
+                    let tBase = hourlyData.temperature_2m[i];
+                    let zBase = globalElevation; // Le vrai niveau du sol
+                    let tParcelBase = tBase + 2.5; // Déclencheur solide
+                    
+                    for (let j = 11; j >= 0; j--) {
+                        let level = LEVELS[j];
+                        let z = parseInt(level.alt);
+                        
+                        // Si le niveau est sous terre, on l'ignore visuellement (le thermique démarre au dessus)
+                        if (z <= zBase) {
+                            currentTopIdx = j;
+                            continue;
+                        }
+                        
+                        let tEnv = hourlyData[`temperature_${level.hpa}hPa`][i];
+                        if (tEnv === null || tEnv === undefined) break;
+                        
+                        let dz = z - zBase; // Élévation depuis le sol réel
+                        let tParcel = tParcelBase - (dz / 100) * 0.98; // Refroidissement adiabatique
+                        
+                        if (tParcel >= tEnv) {
+                            currentTopIdx = j; 
+                        } else {
+                            break; 
+                        }
+                    }
+                }
+                thermalTops.push(currentTopIdx);
+            }
+
+            LEVELS.forEach((level, j) => {
                 const row = document.createElement('tr');
                 const thY = document.createElement('th');
                 thY.className = 'y-axis';
@@ -372,36 +430,42 @@
                     
                     const temp = hourlyData[`temperature_${level.hpa}hPa`][i];
                     const dew = hourlyData[`dewpoint_${level.hpa}hPa`][i];
+                    let isCloudy = false;
 
                     if (temp !== null && dew !== null) {
                         const spread = temp - dew;
-                        
-                        // --- NOUVELLE LOGIQUE DYNAMIQUE ---
-                        // Ajustement des seuils de tolérance pour la formation des nuages en fonction de la température
                         let denseThreshold = 1.5;
                         let lightThreshold = 3.0;
 
                         if (temp < -30) {
-                            // Très haute altitude (Cirrus) : saturation en glace facile
                             denseThreshold = 5.0;
                             lightThreshold = 8.0;
                         } else if (temp < -10) {
-                            // Étage moyen / haut : nuages mixtes ou glacés
                             denseThreshold = 3.0;
                             lightThreshold = 5.0;
                         } else if (temp < 0) {
-                            // Couches inférieures juste sous zéro
                             denseThreshold = 2.0;
                             lightThreshold = 4.0;
                         }
 
                         if (spread <= denseThreshold) {
-                            td.style.backgroundColor = 'rgba(170, 180, 190, 0.7)'; // Nuage dense
+                            td.style.backgroundColor = 'rgba(170, 180, 190, 0.7)';
+                            isCloudy = true;
                         } else if (spread <= lightThreshold) {
-                            td.style.backgroundColor = 'rgba(170, 180, 190, 0.25)'; // Nuage léger / Voile
+                            td.style.backgroundColor = 'rgba(170, 180, 190, 0.25)';
+                            isCloudy = true;
                         } else {
-                            td.style.backgroundColor = 'transparent'; // Ciel clair
+                            td.style.backgroundColor = 'transparent';
                         }
+                    }
+
+                    // --- AFFICHAGE DU PLAFOND (CORRIGÉ) ---
+                    // On ne trace le thermique que si on est au-dessus du sol réel, pour éviter de polluer les cases "souterraines"
+                    let z = parseInt(level.alt);
+                    if (j === thermalTops[i] && z >= globalElevation) {
+                        td.style.boxShadow = 'inset 0 -4px 0 #e74c3c';
+                        // Optionnel : rendre le texte blanc si jamais ça tombe sur un nuage sombre
+                        if (isCloudy) td.style.color = 'white'; 
                     }
 
                     if (speed === null || isNaN(speed)) {
@@ -443,7 +507,7 @@
                 return val !== null && val !== undefined ? val : null;
             });
 
-            const SKEW_FACTOR = 0.04; 
+            const SKEW_FACTOR = 0.08; 
             
             const skewedTemperatures = originalTemperatures.map((t, i) => {
                 if (t === null) return null;
