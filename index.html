@@ -51,6 +51,7 @@
             display: flex;
             flex-direction: column;
             align-items: center;
+            position: relative; /* Ajouté pour le positionnement du bouton de configuration */
         }
 
         .header, .grid-container, .chart-container {
@@ -160,7 +161,6 @@
         .legend-item { display: flex; align-items: center; gap: 5px; }
         .legend-color { width: 12px; height: 12px; border: 1px solid #ccc; }
         
-        /* Nettoyage du style de l'icône divIcon Leaflet */
         .pioupiou-marker { background: none; border: none; }
 
         #pioupiou-widget-container {
@@ -173,17 +173,49 @@
             box-shadow: 0 4px 15px rgba(0,0,0,0.3); 
             overflow: hidden; 
             display: none;
-            /* Force les dimensions */
-            /* width: 250px !important; 
-            min-height: 200px !important; */
         }
 
-        /* Force le widget à prendre toute la place disponible dans son conteneur */
-        .owm-widget {
-            width: 100% !important;
-            height: 100% !important;
-            display: block;
+        .owm-widget { width: 100% !important; height: 100% !important; display: block; }
+
+        /* --- STYLES MENU DE CONFIGURATION --- */
+        #config-btn {
+            position: absolute;
+            top: 15px;
+            left: 15px;
+            background: none;
+            border: none;
+            font-size: 22px;
+            cursor: pointer;
+            z-index: 10;
+            transition: transform 0.3s ease;
         }
+        #config-btn:hover { transform: rotate(45deg); }
+
+        #config-modal {
+            display: none;
+            position: absolute;
+            top: 50px;
+            left: 15px;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+            z-index: 1000;
+            width: 300px;
+            border: 1px solid var(--border-color);
+            font-size: 13px;
+        }
+        #config-modal h3 { margin: 0 0 15px 0; font-size: 16px; color: #2c3e50; border-bottom: 2px solid #eee; padding-bottom: 5px; }
+        .config-section { margin-bottom: 15px; }
+        .config-section strong { display: block; margin-bottom: 10px; color: #2980b9; }
+        .config-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+        .config-row label { color: #555; }
+        .config-row input { width: 60px; padding: 4px; border: 1px solid #ccc; border-radius: 4px; text-align: center; }
+        
+        .config-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px; }
+        .config-actions button { padding: 6px 12px; font-size: 13px; cursor: pointer; border: none; border-radius: 4px; font-weight: bold; }
+        .btn-save { background-color: #2980b9; color: white; }
+        .btn-cancel { background-color: #eee; color: #333; }
     </style>
 </head>
 <body>
@@ -192,10 +224,34 @@
         <div id="map"></div>
     </div>
 
-    <div id="pioupiou-widget-container">
-    </div>
+    <div id="pioupiou-widget-container"></div>
 
     <div id="right-panel">
+        <button id="config-btn" title="Configuration">⚙️</button>
+        <div id="config-modal">
+            <h3>Configuration</h3>
+            
+            <div class="config-section">
+                <strong>Vents Table (km/h)</strong>
+                <div class="config-row"><label>Faible (<span style="color:#2ecc71;">Vert</span>)</label><input type="number" id="cfg-wind-light" step="1"></div>
+                <div class="config-row"><label>Modéré (<span style="color:#f1c40f;">Jaune</span>)</label><input type="number" id="cfg-wind-mod" step="1"></div>
+                <div class="config-row"><label>Fort (<span style="color:#e67e22;">Orange</span>)</label><input type="number" id="cfg-wind-strong" step="1"></div>
+                <div class="config-row"><label>Très fort (<span style="color:#e74c3c;">Rouge</span>)</label><input type="number" id="cfg-wind-gale" step="1"></div>
+            </div>
+
+            <div class="config-section">
+                <strong>Émagramme</strong>
+                <div class="config-row"><label>Seuil instable bas (Vert)</label><input type="number" id="cfg-lapse-green" step="0.1"></div>
+                <div class="config-row"><label>Seuil instable haut (Rouge)</label><input type="number" id="cfg-lapse-red" step="0.1"></div>
+                <div class="config-row"><label>SKEW_FACTOR</label><input type="number" id="cfg-skew" step="0.01"></div>
+                <div class="config-row"><label>Surchauffe particule (°C)</label><input type="number" id="cfg-offset" step="0.1"></div>
+            </div>
+
+            <div class="config-actions">
+                <button class="btn-cancel" id="cfg-cancel">Annuler</button>
+                <button class="btn-save" id="cfg-save">Appliquer</button>
+            </div>
+        </div>
         <div class="header">
             <h2>Aérologie : <span id="location-name">Puy Mary</span></h2>
             <div style="font-size: 12px; color: #666; margin-bottom: 10px;" id="coords-display">45.109°N, 2.676°E</div>
@@ -240,6 +296,63 @@
     </div>
 
     <script>
+        // --- VARIABLES DE CONFIGURATION GLOBALES ---
+        const appConfig = {
+            windLight: 15,
+            windMod: 30,
+            windStrong: 50,
+            windGale: 100,
+            lapseGreen: 0.6,
+            lapseRed: 0.9,
+            skewFactor: 0.08,
+            parcelOffset: 2.5
+        };
+
+        // --- GESTION DU MENU DE CONFIGURATION ---
+        const configBtn = document.getElementById('config-btn');
+        const configModal = document.getElementById('config-modal');
+        const btnSave = document.getElementById('cfg-save');
+        const btnCancel = document.getElementById('cfg-cancel');
+
+        function openConfig() {
+            document.getElementById('cfg-wind-light').value = appConfig.windLight;
+            document.getElementById('cfg-wind-mod').value = appConfig.windMod;
+            document.getElementById('cfg-wind-strong').value = appConfig.windStrong;
+            document.getElementById('cfg-wind-gale').value = appConfig.windGale;
+            document.getElementById('cfg-lapse-green').value = appConfig.lapseGreen;
+            document.getElementById('cfg-lapse-red').value = appConfig.lapseRed;
+            document.getElementById('cfg-skew').value = appConfig.skewFactor;
+            document.getElementById('cfg-offset').value = appConfig.parcelOffset;
+            configModal.style.display = 'block';
+        }
+
+        function closeConfig() {
+            configModal.style.display = 'none';
+        }
+
+        function saveConfig() {
+            appConfig.windLight = parseFloat(document.getElementById('cfg-wind-light').value);
+            appConfig.windMod = parseFloat(document.getElementById('cfg-wind-mod').value);
+            appConfig.windStrong = parseFloat(document.getElementById('cfg-wind-strong').value);
+            appConfig.windGale = parseFloat(document.getElementById('cfg-wind-gale').value);
+            appConfig.lapseGreen = parseFloat(document.getElementById('cfg-lapse-green').value);
+            appConfig.lapseRed = parseFloat(document.getElementById('cfg-lapse-red').value);
+            appConfig.skewFactor = parseFloat(document.getElementById('cfg-skew').value);
+            appConfig.parcelOffset = parseFloat(document.getElementById('cfg-offset').value);
+            
+            closeConfig();
+            
+            // Re-dessine l'interface avec les nouveaux paramètres
+            if (globalWeatherData) {
+                renderGrid(globalWeatherData);
+                loadPioupiouStations(); // Met à jour les couleurs des balises existantes
+            }
+        }
+
+        configBtn.addEventListener('click', openConfig);
+        btnCancel.addEventListener('click', closeConfig);
+        btnSave.addEventListener('click', saveConfig);
+
         // Paramétré pour le Puy Mary
         let currentLat = 45.109; 
         let currentLon = 2.676;
@@ -285,6 +398,7 @@
                             ? station.meta.name 
                             : `Pioupiou #${station.id}`;
 
+                        // Utilise les seuils dynamiques
                         const colorClass = speedVal !== null ? getWindColorClass(speedVal) : '';
 
                         const iconHtml = `
@@ -481,10 +595,10 @@
         });
 
         function getWindColorClass(speed) {
-            if (speed < 15) return 'wind-light';
-            if (speed < 30) return 'wind-mod';
-            if (speed < 50) return 'wind-strong';
-            if (speed < 100) return 'wind-gale';
+            if (speed < appConfig.windLight) return 'wind-light';
+            if (speed < appConfig.windMod) return 'wind-mod';
+            if (speed < appConfig.windStrong) return 'wind-strong';
+            if (speed < appConfig.windGale) return 'wind-gale';
             return 'wind-hurricane'; 
         }
 
@@ -528,7 +642,8 @@
                 if (hourlyData.temperature_2m && hourlyData.temperature_2m[i] !== undefined) {
                     let tBase = hourlyData.temperature_2m[i];
                     let zBase = globalElevation;
-                    let tParcelBase = tBase + 2.5; 
+                    // Utilisation de la configuration pour la surchauffe
+                    let tParcelBase = tBase + appConfig.parcelOffset; 
                     
                     for (let j = 11; j >= 0; j--) {
                         let level = LEVELS[j];
@@ -663,26 +778,25 @@
                 return val !== null && val !== undefined ? val : null;
             });
 
-            const SKEW_FACTOR = 0.08;
+            // APPLICATION DU SKEW_FACTOR VIA LA CONFIGURATION
+            const skew = appConfig.skewFactor;
             
-            const skewedTemperatures = originalTemperatures;
-            const skewedDewpoints = originalDewpoints;
+            const skewedTemperatures = originalTemperatures.map((t, i) => {
+                if (t === null) return null;
+                const p = parseInt(reversedLevels[i].hpa);
+                // Si le Skew = 0, on garde la température brute
+                return skew === 0 ? t : t + (1000 - p) * skew;
+            });
 
-            // const skewedTemperatures = originalTemperatures.map((t, i) => {
-            //     if (t === null) return null;
-            //     const p = parseInt(reversedLevels[i].hpa);
-            //     return t + (1000 - p) * SKEW_FACTOR;
-            // });
-
-            // const skewedDewpoints = originalDewpoints.map((t, i) => {
-            //     if (t === null) return null;
-            //     const p = parseInt(reversedLevels[i].hpa);
-            //     return t + (1000 - p) * SKEW_FACTOR;
-            // });
+            const skewedDewpoints = originalDewpoints.map((t, i) => {
+                if (t === null) return null;
+                const p = parseInt(reversedLevels[i].hpa);
+                return skew === 0 ? t : t + (1000 - p) * skew;
+            });
             
-            // --- CALCUL DE LA PARCELLE D'AIR CHAUD (CORRIGÉ) ---
+            // --- CALCUL DE LA PARCELLE D'AIR CHAUD ---
             const tBase = globalWeatherData[`temperature_2m`][hourIndex];
-            const parcelBaseTempAtSite = (tBase !== undefined && tBase !== null) ? tBase + 2.5 : null;
+            const parcelBaseTempAtSite = (tBase !== undefined && tBase !== null) ? tBase + appConfig.parcelOffset : null;
 
             const skewedParcelTemperatures = [];
             let parcelReachedEnv = false;
@@ -696,7 +810,9 @@
 
             reversedLevels.forEach((level, i) => {
                 const envTemp = originalTemperatures[i];
-                const skewedEnvTemp = envTemp; 
+                const p = parseInt(level.hpa);
+                // Application du skew pour la comparaison visuelle s'il n'est pas à 0
+                const skewedEnvTemp = (envTemp === null || skew === 0) ? envTemp : envTemp + (1000 - p) * skew; 
 
                 if (parcelBaseTempAtSite === null || envTemp === null || envTemp === undefined) {
                     skewedParcelTemperatures.push(null);
@@ -710,18 +826,15 @@
 
                 const levelAlt = parseInt(level.alt);
                 const dz = levelAlt - globalElevation;
+                // Calcul VRAIE physique (non biaisée par le skew)
                 const parcelTemp = parcelBaseTempAtSite - (dz / 100) * 0.98;
-                const skewedParcelTemp = parcelTemp; 
+                // Projection du calcul sur le Skew pour l'affichage
+                const skewedParcelTemp = skew === 0 ? parcelTemp : parcelTemp + (1000 - p) * skew; 
 
-                // TRACÉ STRICT : On s'arrête exactement au plafond du tableau
                 if (!parcelReachedEnv) {
                     if (parcelTemp >= envTemp) {
-                        // Le thermique monte
                         skewedParcelTemperatures.push(skewedParcelTemp);
                     } else {
-                        // Inversion ! Au lieu d'aller se connecter au cran du dessus (ce qui donne
-                        // l'impression d'aller trop loin), on pousse null pour stopper la ligne ICI.
-                        // La courbe orange s'arrêtera donc exactement au niveau du trait rouge du tableau.
                         skewedParcelTemperatures.push(null);
                         parcelReachedEnv = true;
                     }
@@ -765,8 +878,9 @@
                                     
                                     const lapseRate = (dt / dz) * 100;
 
-                                    if (lapseRate < 0.6) return '#2ecc71'; 
-                                    if (lapseRate > 0.9) return '#e74c3c'; 
+                                    // Utilisation des valeurs de configuration
+                                    if (lapseRate < appConfig.lapseGreen) return '#2ecc71'; 
+                                    if (lapseRate > appConfig.lapseRed) return '#e74c3c'; 
                                     return '#000000'; 
                                 }
                             }
@@ -774,7 +888,7 @@
                     ];
 
             datasets.push({
-                label: 'Parcelle sèche (+2.5°C)',
+                label: `Parcelle sèche (+${appConfig.parcelOffset}°C)`,
                 data: skewedParcelTemperatures,
                 borderColor: '#f39c12',
                 backgroundColor: '#f39c12',
@@ -824,12 +938,25 @@
                         tooltip: {
                             callbacks: {
                                 label: function(context) {
-                                    const value = context.raw;
-                                    if (value === null || value === undefined || Number.isNaN(value)) {
-                                        return `${context.dataset.label}: N/A`;
+                                    const index = context.dataIndex;
+                                    const isTemp = context.datasetIndex === 0;
+                                    // Affiche la vraie température non skewsée dans l'info-bulle
+                                    let realValue = null;
+                                    if (context.datasetIndex === 0) realValue = originalTemperatures[index];
+                                    if (context.datasetIndex === 2) realValue = originalDewpoints[index];
+                                    
+                                    // Pour la parcelle sèche
+                                    if (context.datasetIndex === 1) {
+                                        if (context.raw === null) return `${context.dataset.label}: N/A`;
+                                        // On recalcule à l'envers la température sans le skew pour l'affichage propre
+                                        const p = parseInt(reversedLevels[index].hpa);
+                                        const skew = appConfig.skewFactor;
+                                        realValue = skew === 0 ? context.raw : context.raw - (1000 - p) * skew;
                                     }
 
-                                    return `${context.dataset.label}: ${value.toFixed(1)}°C`;
+                                    return realValue !== null 
+                                        ? `${context.dataset.label}: ${realValue.toFixed(1)}°C`
+                                        : `${context.dataset.label}: N/A`;
                                 }
                             }
                         }
