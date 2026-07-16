@@ -733,16 +733,20 @@
                 // const skewedParcelTemp = parcelTemp + (1000 - parseInt(level.hpa)) * SKEW_FACTOR;
                 const skewedParcelTemp = parcelTemp;
 
-                // 4. Tracé et détection du croisement
+                // 4. Tracé et détection du croisement propre
                 if (!parcelReachedEnv) {
-                    skewedParcelTemperatures.push(skewedParcelTemp);
-                    
-                    // Si on passe sous la température ambiante, on a trouvé le croisement.
-                    // On bascule le drapeau pour que le tracé s'arrête au prochain niveau.
-                    if (parcelTemp < envTemp) {
+                    if (parcelTemp >= envTemp) {
+                        // Tant que le thermique est chaud, il monte avec son propre profil
+                        skewedParcelTemperatures.push(skewedParcelTemp);
+                    } else {
+                        // Le thermique tape l'inversion.
+                        // On fixe le bout de la ligne EXACTEMENT sur la courbe de la température ambiante
+                        // pour fermer visuellement la zone de convection sans la traverser.
+                        skewedParcelTemperatures.push(skewedEnvTemp);
                         parcelReachedEnv = true;
                     }
                 } else {
+                    // Au-dessus, la particule est arrêtée
                     skewedParcelTemperatures.push(null);
                 }
             });
