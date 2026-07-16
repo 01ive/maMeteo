@@ -693,18 +693,24 @@
             //     return t + (1000 - p) * SKEW_FACTOR;
             // });
             
-            // --- CALCUL DE LA PARCELLE D'AIR CHAUD ---
-            // On récupère directement la température réelle au sol fournie par le modèle
+            // --- CALCUL DE LA PARCELLE D'AIR CHAUD (CORRIGÉ) ---
             const tBase = globalWeatherData[`temperature_2m`][hourIndex];
             const parcelBaseTempAtSite = (tBase !== undefined && tBase !== null) ? tBase + 2.5 : null;
 
             const skewedParcelTemperatures = [];
             let parcelReachedEnv = false;
 
+            // 1. Trouver l'index de départ : le niveau standard juste en dessous du relief
+            let startDrawIndex = 0;
+            reversedLevels.forEach((level, i) => {
+                if (parseInt(level.alt) <= globalElevation) {
+                    startDrawIndex = i;
+                }
+            });
+
             reversedLevels.forEach((level, i) => {
                 const envTemp = originalTemperatures[i];
                 
-                // Skew-T pour l'environnement (laissé commenté pour ton debug)
                 // const skewedEnvTemp = envTemp !== null ? envTemp + (1000 - parseInt(level.hpa)) * SKEW_FACTOR : null;
                 const skewedEnvTemp = envTemp;
 
@@ -713,37 +719,30 @@
                     return;
                 }
 
-                const levelAlt = parseInt(level.alt);
-                const zBase = globalElevation;
-
-                // 1. Si le niveau de pression est "sous terre", on ne trace pas la bulle
-                if (levelAlt < zBase) {
+                // 2. On ne dessine rien sous l'index de départ
+                if (i < startDrawIndex) {
                     skewedParcelTemperatures.push(null);
                     return;
                 }
 
-                // 2. Calcul du refroidissement adiabatique sec (-0.98°C / 100m) depuis le sol
-                const dz = levelAlt - zBase;
+                // 3. Calcul de la température de la particule depuis l'altitude REELLE
+                const levelAlt = parseInt(level.alt);
+                const dz = levelAlt - globalElevation;
                 const parcelTemp = parcelBaseTempAtSite - (dz / 100) * 0.98;
-
-                // Skew-T pour la parcelle (laissé commenté pour ton debug)
+                
                 // const skewedParcelTemp = parcelTemp + (1000 - parseInt(level.hpa)) * SKEW_FACTOR;
                 const skewedParcelTemp = parcelTemp;
 
-                // 3. Détection du plafond / base des nuages
+                // 4. Tracé et détection du croisement
                 if (!parcelReachedEnv) {
-                    // Attention : dans le code sans Skew-T, on compare directement les vraies températures
-                    if (parcelTemp >= envTemp) {
-                        // La bulle est plus chaude, elle continue de monter
-                        skewedParcelTemperatures.push(skewedParcelTemp);
-                    } else {
-                        // Inversion atteinte : la bulle s'arrête. 
-                        // On connecte visuellement la pointe de la courbe de la parcelle sur la courbe ambiante.
+                    skewedParcelTemperatures.push(skewedParcelTemp);
+                    
+                    // Si on passe sous la température ambiante, on a trouvé le croisement.
+                    // On bascule le drapeau pour que le tracé s'arrête au prochain niveau.
+                    if (parcelTemp < envTemp) {
                         parcelReachedEnv = true;
-                        skewedParcelTemperatures.push(skewedEnvTemp);
                     }
                 } else {
-                    // Au-dessus du plafond, le thermique n'existe plus
                     skewedParcelTemperatures.push(null);
                 }
             });
