@@ -271,7 +271,6 @@
                         const lat = station.location.latitude;
                         const lon = station.location.longitude;
                         
-                        // On extrait la valeur numérique pour le calcul de la couleur
                         const speedVal = station.measurements && station.measurements.wind_speed_avg !== null 
                             ? Math.round(station.measurements.wind_speed_avg) 
                             : null;
@@ -286,11 +285,8 @@
                             ? station.meta.name 
                             : `Pioupiou #${station.id}`;
 
-                        // On récupère la classe CSS associée à la force du vent
                         const colorClass = speedVal !== null ? getWindColorClass(speedVal) : '';
 
-                        // Injection de la classe "colorClass" dans la div principale.
-                        // La flèche et le texte hériteront automatiquement de la bonne couleur.
                         const iconHtml = `
                             <div style="position: absolute; transform: translate(-50%, -50%);">
                                 <div class="${colorClass}" style="background: rgba(255,255,255,0.95); border: 1px solid #ccc; border-radius: 12px; padding: 3px 8px; font-size: 12px; font-weight: bold; display: flex; align-items: center; gap: 6px; box-shadow: 0px 2px 4px rgba(0,0,0,0.3); white-space: nowrap;">
@@ -307,16 +303,13 @@
                             popupAnchor: [0, -15]
                         });
 
-                        // Extraction des données Pioupiou
                         const min = station.measurements && station.measurements.wind_speed_min !== null ? station.measurements.wind_speed_min : '-';
                         const max = station.measurements && station.measurements.wind_speed_max !== null ? station.measurements.wind_speed_max : '-';
                         const dirDegrees = station.measurements && station.measurements.wind_heading !== null ? station.measurements.wind_heading : 0;
                         const cardinal = getCardinalDirection(dirDegrees);
 
-                        // Création du marqueur
                         const marker = L.marker([lat, lon], { icon: pioupiouIcon }).addTo(pioupiouLayer);
 
-                        // Ouverture du popup au survol
                         marker.on('mouseover', function(e) {
                             this.bindPopup(`
                                 <div style="text-align: center; font-family: sans-serif; line-height: 1.4;">
@@ -332,7 +325,6 @@
                             `).openPopup();
                         });
 
-                        // Fermeture du popup quand on sort de la zone
                         marker.on('mouseout', function(e) {
                             this.closePopup();
                         });
@@ -343,7 +335,6 @@
                             
                             container.style.display = 'block';
                             
-                            // 1. On vide le conteneur
                             container.innerHTML = `
                                 <div style="padding: 5px; text-align: right; background: #f8f8f8;">
                                     <button onclick="document.getElementById('pioupiou-widget-container').style.display='none'" style="cursor:pointer;">✕</button>
@@ -351,12 +342,10 @@
                                 <div class="owm-widget" data-id="${widgetId}" data-show-live="yes" data-show-2h="yes" data-show-24h="no"></div>
                             `;
 
-                            // 3. On crée un élément SCRIPT pour forcer le chargement de la logique
                             const script = document.createElement('script');
                             script.src = "https://www.openwindmap.org/js/widget-v1.js";
                             script.async = true;
                             
-                            // On ajoute le script au DOM, ce qui déclenchera l'auto-initialisation du widget
                             document.body.appendChild(script);
                         });
                     });
@@ -366,9 +355,7 @@
             }
         }
 
-        // Chargement initial des balises
         loadPioupiouStations();
-        // Optionnel : Actualiser les balises toutes les 10 minutes
         setInterval(loadPioupiouStations, 10 * 60 * 1000);
 
         // --- GESTION DE LA SÉLECTION SUR LA CARTE ---
@@ -700,7 +687,6 @@
             const skewedParcelTemperatures = [];
             let parcelReachedEnv = false;
 
-            // 1. Trouver l'index de départ : le niveau standard juste en dessous du relief
             let startDrawIndex = 0;
             reversedLevels.forEach((level, i) => {
                 if (parseInt(level.alt) <= globalElevation) {
@@ -710,43 +696,36 @@
 
             reversedLevels.forEach((level, i) => {
                 const envTemp = originalTemperatures[i];
-                
-                // const skewedEnvTemp = envTemp !== null ? envTemp + (1000 - parseInt(level.hpa)) * SKEW_FACTOR : null;
-                const skewedEnvTemp = envTemp;
+                const skewedEnvTemp = envTemp; 
 
                 if (parcelBaseTempAtSite === null || envTemp === null || envTemp === undefined) {
                     skewedParcelTemperatures.push(null);
                     return;
                 }
 
-                // 2. On ne dessine rien sous l'index de départ
                 if (i < startDrawIndex) {
                     skewedParcelTemperatures.push(null);
                     return;
                 }
 
-                // 3. Calcul de la température de la particule depuis l'altitude REELLE
                 const levelAlt = parseInt(level.alt);
                 const dz = levelAlt - globalElevation;
                 const parcelTemp = parcelBaseTempAtSite - (dz / 100) * 0.98;
-                
-                // const skewedParcelTemp = parcelTemp + (1000 - parseInt(level.hpa)) * SKEW_FACTOR;
-                const skewedParcelTemp = parcelTemp;
+                const skewedParcelTemp = parcelTemp; 
 
-                // 4. Tracé et détection du croisement propre
+                // TRACÉ STRICT : On s'arrête exactement au plafond du tableau
                 if (!parcelReachedEnv) {
                     if (parcelTemp >= envTemp) {
-                        // Tant que le thermique est chaud, il monte avec son propre profil
+                        // Le thermique monte
                         skewedParcelTemperatures.push(skewedParcelTemp);
                     } else {
-                        // Le thermique tape l'inversion.
-                        // On fixe le bout de la ligne EXACTEMENT sur la courbe de la température ambiante
-                        // pour fermer visuellement la zone de convection sans la traverser.
-                        skewedParcelTemperatures.push(skewedEnvTemp);
+                        // Inversion ! Au lieu d'aller se connecter au cran du dessus (ce qui donne
+                        // l'impression d'aller trop loin), on pousse null pour stopper la ligne ICI.
+                        // La courbe orange s'arrêtera donc exactement au niveau du trait rouge du tableau.
+                        skewedParcelTemperatures.push(null);
                         parcelReachedEnv = true;
                     }
                 } else {
-                    // Au-dessus, la particule est arrêtée
                     skewedParcelTemperatures.push(null);
                 }
             });
