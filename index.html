@@ -676,19 +676,22 @@
                 return val !== null && val !== undefined ? val : null;
             });
 
-            const SKEW_FACTOR = 0.08; 
+            const SKEW_FACTOR = 0.08;
             
-            const skewedTemperatures = originalTemperatures.map((t, i) => {
-                if (t === null) return null;
-                const p = parseInt(reversedLevels[i].hpa);
-                return t + (1000 - p) * SKEW_FACTOR;
-            });
+            const skewedTemperatures = originalTemperatures;
+            const skewedDewpoints = originalDewpoints;
 
-            const skewedDewpoints = originalDewpoints.map((t, i) => {
-                if (t === null) return null;
-                const p = parseInt(reversedLevels[i].hpa);
-                return t + (1000 - p) * SKEW_FACTOR;
-            });
+            // const skewedTemperatures = originalTemperatures.map((t, i) => {
+            //     if (t === null) return null;
+            //     const p = parseInt(reversedLevels[i].hpa);
+            //     return t + (1000 - p) * SKEW_FACTOR;
+            // });
+
+            // const skewedDewpoints = originalDewpoints.map((t, i) => {
+            //     if (t === null) return null;
+            //     const p = parseInt(reversedLevels[i].hpa);
+            //     return t + (1000 - p) * SKEW_FACTOR;
+            // });
 
             const ctx = document.getElementById('sondageChart').getContext('2d');
 
@@ -773,11 +776,12 @@
                         tooltip: {
                             callbacks: {
                                 label: function(context) {
-                                    const index = context.dataIndex;
-                                    const realValue = originalTemperatures[index];
-                                    return realValue !== null 
-                                        ? `${context.dataset.label}: ${realValue.toFixed(1)}°C`
-                                        : `${context.dataset.label}: N/A`;
+                                    const value = context.raw;
+                                    if (value === null || value === undefined || Number.isNaN(value)) {
+                                        return `${context.dataset.label}: N/A`;
+                                    }
+
+                                    return `${context.dataset.label}: ${value.toFixed(1)}°C`;
                                 }
                             }
                         }
