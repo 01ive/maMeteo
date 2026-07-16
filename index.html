@@ -216,6 +216,63 @@
         .config-actions button { padding: 6px 12px; font-size: 13px; cursor: pointer; border: none; border-radius: 4px; font-weight: bold; }
         .btn-save { background-color: #2980b9; color: white; }
         .btn-cancel { background-color: #eee; color: #333; }
+
+        /* --- RESPONSIVE MOBILE --- */
+        @media (max-width: 768px) {
+            body {
+                flex-direction: column; /* Empile les panneaux verticalement */
+            }
+
+            #left-panel {
+                flex: 0 0 45vh; /* La carte prend 45% de la hauteur de l'écran */
+                width: 100%;
+                height: 45vh;
+            }
+
+            #right-panel {
+                flex: 0 0 55vh; /* Les données prennent 55% */
+                width: 100%;
+                height: 55vh;
+                border-left: none;
+                border-top: 3px solid #2980b9; /* Ligne de séparation bleue */
+                padding: 10px;
+            }
+
+            /* Ajustement des textes et contrôles pour le tactile */
+            .header h2 {
+                font-size: 1.2rem;
+            }
+            select, .date-controls button {
+                padding: 10px; /* Cibles tactiles plus larges */
+            }
+
+            /* Le menu de configuration s'adapte à l'écran */
+            #config-modal {
+                width: 90%;
+                left: 5%;
+                top: 50vh;
+                transform: translateY(-50%);
+                position: fixed; /* Reste fixe même si on scrolle les données */
+            }
+
+            /* Le widget Pioupiou vient se poser juste au dessus du panneau de données */
+            #pioupiou-widget-container {
+                left: 50% !important;
+                transform: translateX(-50%);
+                bottom: 56vh !important; 
+                z-index: 2000;
+            }
+
+            /* Force la vue colonne même si le mode réduit est activé */
+            .compact-view .grid-chart-layout {
+                flex-direction: column;
+            }
+            .compact-view .grid-chart-layout .chart-container {
+                max-width: 100%;
+                flex: none;
+            }
+        }
+
     </style>
 </head>
 <body>
