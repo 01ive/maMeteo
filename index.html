@@ -678,19 +678,74 @@
 
             const SKEW_FACTOR = 0.08;
             
-            // const skewedTemperatures = originalTemperatures;
-            // const skewedDewpoints = originalDewpoints;
+            const skewedTemperatures = originalTemperatures;
+            const skewedDewpoints = originalDewpoints;
 
-            const skewedTemperatures = originalTemperatures.map((t, i) => {
-                if (t === null) return null;
-                const p = parseInt(reversedLevels[i].hpa);
-                return t + (1000 - p) * SKEW_FACTOR;
-            });
+            // const skewedTemperatures = originalTemperatures.map((t, i) => {
+            //     if (t === null) return null;
+            //     const p = parseInt(reversedLevels[i].hpa);
+            //     return t + (1000 - p) * SKEW_FACTOR;
+            // });
 
-            const skewedDewpoints = originalDewpoints.map((t, i) => {
-                if (t === null) return null;
-                const p = parseInt(reversedLevels[i].hpa);
-                return t + (1000 - p) * SKEW_FACTOR;
+            // const skewedDewpoints = originalDewpoints.map((t, i) => {
+            //     if (t === null) return null;
+            //     const p = parseInt(reversedLevels[i].hpa);
+            //     return t + (1000 - p) * SKEW_FACTOR;
+            // });
+            
+            // --- CALCUL DE LA PARCELLE D'AIR CHAUD ---
+            // On récupère directement la température réelle au sol fournie par le modèle
+            const tBase = globalWeatherData[`temperature_2m`][hourIndex];
+            const parcelBaseTempAtSite = (tBase !== undefined && tBase !== null) ? tBase + 2.5 : null;
+
+            const skewedParcelTemperatures = [];
+            let parcelReachedEnv = false;
+
+            reversedLevels.forEach((level, i) => {
+                const envTemp = originalTemperatures[i];
+                
+                // Skew-T pour l'environnement (laissé commenté pour ton debug)
+                // const skewedEnvTemp = envTemp !== null ? envTemp + (1000 - parseInt(level.hpa)) * SKEW_FACTOR : null;
+                const skewedEnvTemp = envTemp;
+
+                if (parcelBaseTempAtSite === null || envTemp === null || envTemp === undefined) {
+                    skewedParcelTemperatures.push(null);
+                    return;
+                }
+
+                const levelAlt = parseInt(level.alt);
+                const zBase = globalElevation;
+
+                // 1. Si le niveau de pression est "sous terre", on ne trace pas la bulle
+                if (levelAlt < zBase) {
+                    skewedParcelTemperatures.push(null);
+                    return;
+                }
+
+                // 2. Calcul du refroidissement adiabatique sec (-0.98°C / 100m) depuis le sol
+                const dz = levelAlt - zBase;
+                const parcelTemp = parcelBaseTempAtSite - (dz / 100) * 0.98;
+
+                // Skew-T pour la parcelle (laissé commenté pour ton debug)
+                // const skewedParcelTemp = parcelTemp + (1000 - parseInt(level.hpa)) * SKEW_FACTOR;
+                const skewedParcelTemp = parcelTemp;
+
+                // 3. Détection du plafond / base des nuages
+                if (!parcelReachedEnv) {
+                    // Attention : dans le code sans Skew-T, on compare directement les vraies températures
+                    if (parcelTemp >= envTemp) {
+                        // La bulle est plus chaude, elle continue de monter
+                        skewedParcelTemperatures.push(skewedParcelTemp);
+                    } else {
+                        // Inversion atteinte : la bulle s'arrête. 
+                        // On connecte visuellement la pointe de la courbe de la parcelle sur la courbe ambiante.
+                        parcelReachedEnv = true;
+                        skewedParcelTemperatures.push(skewedEnvTemp);
+                    }
+                } else {
+                    // Au-dessus du plafond, le thermique n'existe plus
+                    skewedParcelTemperatures.push(null);
+                }
             });
 
             const ctx = document.getElementById('sondageChart').getContext('2d');
@@ -735,6 +790,17 @@
                             }
                         }
                     ];
+
+            datasets.push({
+                label: 'Parcelle sèche (+2.5°C)',
+                data: skewedParcelTemperatures,
+                borderColor: '#f39c12',
+                backgroundColor: '#f39c12',
+                borderDash: [6, 4],
+                tension: 0,
+                pointRadius: 0,
+                pointHitRadius: 10
+            });
 
             if (!isCompactView) {
                 datasets.push({
