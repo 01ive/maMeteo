@@ -678,20 +678,20 @@
 
             const SKEW_FACTOR = 0.08;
             
-            const skewedTemperatures = originalTemperatures;
-            const skewedDewpoints = originalDewpoints;
+            // const skewedTemperatures = originalTemperatures;
+            // const skewedDewpoints = originalDewpoints;
 
-            // const skewedTemperatures = originalTemperatures.map((t, i) => {
-            //     if (t === null) return null;
-            //     const p = parseInt(reversedLevels[i].hpa);
-            //     return t + (1000 - p) * SKEW_FACTOR;
-            // });
+            const skewedTemperatures = originalTemperatures.map((t, i) => {
+                if (t === null) return null;
+                const p = parseInt(reversedLevels[i].hpa);
+                return t + (1000 - p) * SKEW_FACTOR;
+            });
 
-            // const skewedDewpoints = originalDewpoints.map((t, i) => {
-            //     if (t === null) return null;
-            //     const p = parseInt(reversedLevels[i].hpa);
-            //     return t + (1000 - p) * SKEW_FACTOR;
-            // });
+            const skewedDewpoints = originalDewpoints.map((t, i) => {
+                if (t === null) return null;
+                const p = parseInt(reversedLevels[i].hpa);
+                return t + (1000 - p) * SKEW_FACTOR;
+            });
 
             const ctx = document.getElementById('sondageChart').getContext('2d');
 
