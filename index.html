@@ -51,7 +51,7 @@
             display: flex;
             flex-direction: column;
             align-items: center;
-            position: relative; /* Ajouté pour le positionnement du bouton de configuration */
+            position: relative; 
         }
 
         .header, .grid-container, .chart-container {
@@ -227,6 +227,7 @@
     <div id="pioupiou-widget-container"></div>
 
     <div id="right-panel">
+        <!-- BOUTON ET MODAL DE CONFIGURATION -->
         <button id="config-btn" title="Configuration">⚙️</button>
         <div id="config-modal">
             <h3>Configuration</h3>
@@ -252,6 +253,8 @@
                 <button class="btn-save" id="cfg-save">Appliquer</button>
             </div>
         </div>
+        <!-- FIN CONFIGURATION -->
+
         <div class="header">
             <h2>Aérologie : <span id="location-name">Puy Mary</span></h2>
             <div style="font-size: 12px; color: #666; margin-bottom: 10px;" id="coords-display">45.109°N, 2.676°E</div>
@@ -259,8 +262,11 @@
             <label for="model-select" style="font-size: 13px;">Modèle Météo :</label><br>
             <select id="model-select">
                 <option value="best_match">Meilleure correspondance</option>
+                <option value="ecmwf_ifs025">ECMWF (IFS)</option>
                 <option value="arome_france">AROME (Météo-France)</option>
+                <option value="meteofrance_arpege_europe">ARPEGE (Météo-France)</option>
                 <option value="icon_d2">ICON-D2 (DWD)</option>
+                <option value="icon_eu">ICON-EU (DWD)</option>
                 <option value="gfs_seamless">GFS (NOAA)</option>
             </select>
 
@@ -567,6 +573,15 @@
                 const data = await response.json();
                 
                 if (data.error) throw new Error(data.reason);
+
+
+                // Après await response.json()
+                if (!data.hourly || !data.hourly.temperature_1000hPa || data.hourly.temperature_1000hPa.every(value => value === null)) {
+                    alert("Le modèle sélectionné ne retourne pas de données pour cette zone. Basculement sur GFS.");
+                    modelSelect.value = 'gfs_seamless';
+                    fetchWeatherData();
+                    return;
+                }
 
                 globalElevation = data.elevation || 0; 
                 globalWeatherData = data.hourly;
