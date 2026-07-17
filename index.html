@@ -39,6 +39,37 @@
 
         #map { width: 100%; height: 100%; }
 
+        /* --- BARRE DE RECHERCHE CARTE --- */
+        #search-box {
+            position: absolute;
+            top: 10px;
+            left: 50px; /* Aligné à côté des boutons de zoom */
+            z-index: 1000;
+            background: white;
+            border-radius: 4px;
+            box-shadow: 0 1px 5px rgba(0,0,0,0.65);
+            display: flex;
+            align-items: center;
+            overflow: hidden;
+        }
+        #search-input {
+            border: none;
+            padding: 8px 12px;
+            outline: none;
+            width: 220px;
+            font-size: 13px;
+        }
+        #search-btn {
+            background: #fff;
+            border: none;
+            padding: 8px 12px;
+            cursor: pointer;
+            border-left: 1px solid #eee;
+            font-size: 14px;
+            transition: background 0.2s;
+        }
+        #search-btn:hover { background: #f4f4f9; }
+
         #right-panel {
             flex: 0 0 33.33%;
             height: 100%;
@@ -261,15 +292,17 @@
 
         /* --- RESPONSIVE MOBILE --- */
         @media (max-width: 768px) {
-            body {
-                flex-direction: column; 
-            }
+            body { flex-direction: column; }
 
-            #left-panel {
-                flex: 0 0 45vh; 
-                width: 100%;
-                height: 45vh;
+            #left-panel { flex: 0 0 45vh; width: 100%; height: 45vh; }
+
+            #search-box {
+                top: 10px;
+                left: 50px;
+                right: 10px;
+                width: calc(100% - 60px);
             }
+            #search-input { width: 100%; }
 
             #right-panel {
                 flex: 0 0 55vh; 
@@ -280,12 +313,8 @@
                 padding: 10px;
             }
 
-            .top-bar h2 {
-                font-size: 1.2rem;
-            }
-            select, .date-controls button, #toggle-view-btn {
-                padding: 10px; 
-            }
+            .top-bar h2 { font-size: 1.2rem; }
+            select, .date-controls button, #toggle-view-btn { padding: 10px; }
 
             #config-modal {
                 width: 90%;
@@ -305,10 +334,7 @@
                 z-index: 2000;
             }
 
-            .compact-view .grid-chart-layout {
-                flex-direction: column;
-            }
-            /* On applique flex: none au graphique ET au tableau pour éviter l'écrasement */
+            .compact-view .grid-chart-layout { flex-direction: column; }
             .compact-view .grid-chart-layout .chart-container,
             .compact-view .grid-chart-layout .grid-container {
                 max-width: 100%;
@@ -320,6 +346,12 @@
 <body>
 
     <div id="left-panel">
+        <!-- NOUVELLE BOITE DE RECHERCHE -->
+        <div id="search-box">
+            <input type="text" id="search-input" placeholder="Rechercher un lieu (ville, sommet...)" />
+            <button id="search-btn" title="Rechercher">🔍</button>
+        </div>
+        
         <div id="map"></div>
     </div>
 
@@ -327,7 +359,6 @@
 
     <div id="right-panel">
         
-        <!-- NOUVELLE TOP BAR FLEX -->
         <div class="top-bar">
             <button id="config-btn" title="Configuration">⚙️</button>
             <button id="toggle-view-btn">Mode simple</button>
@@ -457,7 +488,7 @@
             // Re-dessine l'interface avec les nouveaux paramètres
             if (globalWeatherData) {
                 renderGrid(globalWeatherData);
-                loadPioupiouStations(); // Met à jour les couleurs des balises existantes
+                loadPioupiouStations(); 
             }
         }
 
@@ -477,6 +508,57 @@
         }).addTo(map);
 
         let marker = L.marker([currentLat, currentLon]).addTo(map);
+
+        // --- GESTION DE LA BARRE DE RECHERCHE ---
+        const searchInput = document.getElementById('search-input');
+        const searchBtn = document.getElementById('search-btn');
+
+        async function performSearch() {
+            const query = searchInput.value.trim();
+            if (!query) return;
+
+            // Indiquer qu'une recherche est en cours
+            const originalText = searchBtn.innerText;
+            searchBtn.innerText = "⏳";
+            
+            try {
+                const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1`);
+                const data = await response.json();
+                
+                if (data && data.length > 0) {
+                    const result = data[0];
+                    currentLat = parseFloat(result.lat);
+                    currentLon = parseFloat(result.lon);
+                    
+                    // Centrer la carte et déplacer le marqueur
+                    map.setView([currentLat, currentLon], 11);
+                    marker.setLatLng([currentLat, currentLon]);
+                    
+                    // Mettre à jour l'affichage des titres
+                    document.getElementById('coords-display').innerText = `${currentLat.toFixed(3)}°N, ${currentLon.toFixed(3)}°E`;
+                    // Utiliser le nom principal trouvé
+                    document.getElementById('location-name').innerText = result.name || result.display_name.split(',')[0];
+                    
+                    // Rafraîchir les données météo
+                    fetchWeatherData();
+                } else {
+                    alert("Lieu introuvable. Veuillez essayer une autre formulation.");
+                }
+            } catch (error) {
+                console.error("Erreur de recherche :", error);
+                alert("Erreur de connexion lors de la recherche.");
+            } finally {
+                searchBtn.innerText = originalText;
+            }
+        }
+
+        searchBtn.addEventListener('click', performSearch);
+        searchInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                performSearch();
+            }
+        });
+        // ----------------------------------------
 
         // --- GESTION DES BALISES PIOUPIOU ---
         let pioupiouLayer = L.layerGroup().addTo(map);
@@ -510,7 +592,6 @@
                             ? station.meta.name 
                             : `Pioupiou #${station.id}`;
 
-                        // Utilise les seuils dynamiques
                         const colorClass = speedVal !== null ? getWindColorClass(speedVal) : '';
 
                         const iconHtml = `
@@ -672,7 +753,6 @@
             chartSection.style.display = 'none';
 
             const dateStr = getApiDateString(currentDate);
-            // AJOUT DE "precipitation" DANS LA REQUÊTE API
             const url = `https://api.open-meteo.com/v1/forecast?latitude=${currentLat}&longitude=${currentLon}&hourly=${windSpeedVars},${windDirVars},${tempVars},${dewVars},temperature_2m,precipitation&models=${model}&start_date=${dateStr}&end_date=${dateStr}&timezone=Europe%2FBerlin`;
 
             try {
@@ -877,7 +957,7 @@
                 table.appendChild(row);
             });
 
-            // --- AJOUT DE LA LIGNE POUR LA PLUVIOMÉTRIE ---
+            // --- LIGNE POUR LA PLUVIOMÉTRIE ---
             const rainRow = document.createElement('tr');
             const thRain = document.createElement('th');
             thRain.className = 'y-axis';
