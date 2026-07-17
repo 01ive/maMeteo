@@ -25,6 +25,22 @@ Parfait pour les amateurs de météo, les pilotes, les parapentistes et tous ceu
 4. Utilisez l'émagramme pour analyser les profils atmosphériques
 5. Explorez les explications détaillées pour comprendre chaque concept
 
+## Screenshots
+
+### PC
+
+![screenshot](screenshots/screenshot.jpg)
+
+![emagramme](screenshots/emagramme.jpg)
+
+![simple](screenshots/simple-mod.jpg)
+
+![settings](screenshots/settings.jpg)
+
+### Mobile
+
+![mobile](screenshots/mobile.jpg)
+
 ## 📋 Les éléments
 
 ### 🗺️ La carte
