@@ -672,7 +672,8 @@
             chartSection.style.display = 'none';
 
             const dateStr = getApiDateString(currentDate);
-            const url = `https://api.open-meteo.com/v1/forecast?latitude=${currentLat}&longitude=${currentLon}&hourly=${windSpeedVars},${windDirVars},${tempVars},${dewVars},temperature_2m&models=${model}&start_date=${dateStr}&end_date=${dateStr}&timezone=Europe%2FBerlin`;
+            // AJOUT DE "precipitation" DANS LA REQUÊTE API
+            const url = `https://api.open-meteo.com/v1/forecast?latitude=${currentLat}&longitude=${currentLon}&hourly=${windSpeedVars},${windDirVars},${tempVars},${dewVars},temperature_2m,precipitation&models=${model}&start_date=${dateStr}&end_date=${dateStr}&timezone=Europe%2FBerlin`;
 
             try {
                 const response = await fetch(url);
@@ -680,7 +681,6 @@
                 
                 if (data.error) throw new Error(data.reason);
 
-                // Après await response.json()
                 if (!data.hourly || !data.hourly.temperature_1000hPa || data.hourly.temperature_1000hPa.every(value => value === null)) {
                     alert("Le modèle sélectionné ne retourne pas de données pour cette zone. Basculement sur GFS.");
                     modelSelect.value = 'gfs_seamless';
@@ -727,7 +727,6 @@
             const table = document.getElementById('wind-grid');
             
             if (container && table) {
-                // Calcule le milieu du tableau moins la moitié de la largeur visible du conteneur
                 const scrollPos = (table.offsetWidth - container.clientWidth) / 2;
                 container.scrollLeft = scrollPos;
             }
@@ -773,7 +772,6 @@
                 if (hourlyData.temperature_2m && hourlyData.temperature_2m[i] !== undefined) {
                     let tBase = hourlyData.temperature_2m[i];
                     let zBase = globalElevation;
-                    // Utilisation de la configuration pour la surchauffe
                     let tParcelBase = tBase + appConfig.parcelOffset; 
                     
                     for (let j = 11; j >= 0; j--) {
@@ -879,6 +877,27 @@
                 table.appendChild(row);
             });
 
+            // --- AJOUT DE LA LIGNE POUR LA PLUVIOMÉTRIE ---
+            const rainRow = document.createElement('tr');
+            const thRain = document.createElement('th');
+            thRain.className = 'y-axis';
+            thRain.innerText = '💧 mm';
+            rainRow.appendChild(thRain);
+
+            visibleHourIndices.forEach(i => {
+                const td = document.createElement('td');
+                const precip = hourlyData.precipitation ? hourlyData.precipitation[i] : 0;
+
+                if (precip > 0) {
+                    td.innerHTML = `<div style="color: #3498db; font-weight: bold; font-size: 12px;">${precip}</div>`;
+                } else {
+                    td.innerHTML = "";
+                }
+                rainRow.appendChild(td);
+            });
+            table.appendChild(rainRow);
+            // ---------------------------------------------
+
             windGrid.appendChild(table);
 
             const chosenHourIndex = visibleHourIndices.includes(selectedHourIndex)
@@ -911,13 +930,11 @@
                 return val !== null && val !== undefined ? val : null;
             });
 
-            // APPLICATION DU SKEW_FACTOR VIA LA CONFIGURATION
             const skew = appConfig.skewFactor;
             
             const skewedTemperatures = originalTemperatures.map((t, i) => {
                 if (t === null) return null;
                 const p = parseInt(reversedLevels[i].hpa);
-                // Si le Skew = 0, on garde la température brute
                 return skew === 0 ? t : t + (1000 - p) * skew;
             });
 
@@ -927,7 +944,6 @@
                 return skew === 0 ? t : t + (1000 - p) * skew;
             });
             
-            // --- CALCUL DE LA PARCELLE D'AIR CHAUD ---
             const tBase = globalWeatherData[`temperature_2m`][hourIndex];
             const parcelBaseTempAtSite = (tBase !== undefined && tBase !== null) ? tBase + appConfig.parcelOffset : null;
 
@@ -944,7 +960,6 @@
             reversedLevels.forEach((level, i) => {
                 const envTemp = originalTemperatures[i];
                 const p = parseInt(level.hpa);
-                // Application du skew pour la comparaison visuelle s'il n'est pas à 0
                 const skewedEnvTemp = (envTemp === null || skew === 0) ? envTemp : envTemp + (1000 - p) * skew; 
 
                 if (parcelBaseTempAtSite === null || envTemp === null || envTemp === undefined) {
@@ -959,9 +974,7 @@
 
                 const levelAlt = parseInt(level.alt);
                 const dz = levelAlt - globalElevation;
-                // Calcul VRAIE physique (non biaisée par le skew)
                 const parcelTemp = parcelBaseTempAtSite - (dz / 100) * 0.98;
-                // Projection du calcul sur le Skew pour l'affichage
                 const skewedParcelTemp = skew === 0 ? parcelTemp : parcelTemp + (1000 - p) * skew; 
 
                 if (!parcelReachedEnv) {
@@ -1011,7 +1024,6 @@
                                     
                                     const lapseRate = (dt / dz) * 100;
 
-                                    // Utilisation des valeurs de configuration
                                     if (lapseRate < appConfig.lapseGreen) return '#2ecc71'; 
                                     if (lapseRate > appConfig.lapseRed) return '#e74c3c'; 
                                     return '#000000'; 
@@ -1072,15 +1084,12 @@
                                 label: function(context) {
                                     const index = context.dataIndex;
                                     const isTemp = context.datasetIndex === 0;
-                                    // Affiche la vraie température non skewsée dans l'info-bulle
                                     let realValue = null;
                                     if (context.datasetIndex === 0) realValue = originalTemperatures[index];
                                     if (context.datasetIndex === 2) realValue = originalDewpoints[index];
                                     
-                                    // Pour la parcelle sèche
                                     if (context.datasetIndex === 1) {
                                         if (context.raw === null) return `${context.dataset.label}: N/A`;
-                                        // On recalcule à l'envers la température sans le skew pour l'affichage propre
                                         const p = parseInt(reversedLevels[index].hpa);
                                         const skew = appConfig.skewFactor;
                                         realValue = skew === 0 ? context.raw : context.raw - (1000 - p) * skew;
