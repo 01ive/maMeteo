@@ -308,7 +308,9 @@
             .compact-view .grid-chart-layout {
                 flex-direction: column;
             }
-            .compact-view .grid-chart-layout .chart-container {
+            /* On applique flex: none au graphique ET au tableau pour éviter l'écrasement */
+            .compact-view .grid-chart-layout .chart-container,
+            .compact-view .grid-chart-layout .grid-container {
                 max-width: 100%;
                 flex: none;
             }
