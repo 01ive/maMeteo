@@ -54,13 +54,53 @@
             position: relative; 
         }
 
+        /* --- NOUVEAU CONTENEUR FLEX POUR L'EN-TÊTE --- */
+        .top-bar {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 15px;
+            width: 100%;
+            margin-bottom: 20px;
+            margin-top: 10px;
+        }
+
+        .top-bar h2 {
+            display: flex;
+            align-items: baseline;
+            gap: 10px;
+            margin: 0;
+            font-size: 1.4rem;
+            color: #2c3e50;
+        }
+
+        .top-bar #coords-display {
+            font-size: 12px;
+            color: #666;
+            margin: 0;
+        }
+
+        #toggle-view-btn {
+            padding: 6px 12px;
+            font-size: 13px;
+            cursor: pointer;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            background-color: #fff;
+            color: #2980b9;
+            font-weight: bold;
+            transition: all 0.2s;
+        }
+        #toggle-view-btn:hover { background-color: #e8f4f8; border-color: #2980b9; }
+        /* ------------------------------------------- */
+
         .header, .grid-container, .chart-container {
             flex-shrink: 0;
             width: 100%;
         }
 
-        .header { text-align: center; margin-bottom: 20px; }
-        .header h2 { margin-top: 0; font-size: 1.4rem; color: #2c3e50; }
+        .header { text-align: center; margin-bottom: 20px; position: relative; }
         
         select {
             padding: 8px;
@@ -151,7 +191,7 @@
         .wind-gale  { color: #e74c3c; }
         .wind-hurricane { color: #8e44ad; }
         
-        #loading { position: absolute; top: 150px; left: 10px; font-style: italic; color: #666; height: 20px; font-size: 13px; }
+        #loading { position: absolute; top: -20px; left: 10px; font-style: italic; color: #666; height: 20px; font-size: 13px; }
 
         .chart-container { background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); display: none; }
         #chart-title { text-align: center; margin-top: 0; font-size: 15px; color: #2c3e50; margin-bottom: 15px; }
@@ -181,15 +221,15 @@
 
         /* --- STYLES MENU DE CONFIGURATION --- */
         #config-btn {
-            position: absolute;
-            top: 15px;
-            left: 15px;
             background: none;
             border: none;
             font-size: 22px;
             cursor: pointer;
             z-index: 10;
             transition: transform 0.3s ease;
+            padding: 0;
+            display: flex;
+            align-items: center;
         }
         #config-btn:hover { transform: rotate(45deg); }
 
@@ -222,42 +262,39 @@
         /* --- RESPONSIVE MOBILE --- */
         @media (max-width: 768px) {
             body {
-                flex-direction: column; /* Empile les panneaux verticalement */
+                flex-direction: column; 
             }
 
             #left-panel {
-                flex: 0 0 45vh; /* La carte prend 45% de la hauteur de l'écran */
+                flex: 0 0 45vh; 
                 width: 100%;
                 height: 45vh;
             }
 
             #right-panel {
-                flex: 0 0 55vh; /* Les données prennent 55% */
+                flex: 0 0 55vh; 
                 width: 100%;
                 height: 55vh;
                 border-left: none;
-                border-top: 3px solid #2980b9; /* Ligne de séparation bleue */
+                border-top: 3px solid #2980b9; 
                 padding: 10px;
             }
 
-            /* Ajustement des textes et contrôles pour le tactile */
-            .header h2 {
+            .top-bar h2 {
                 font-size: 1.2rem;
             }
-            select, .date-controls button {
-                padding: 10px; /* Cibles tactiles plus larges */
+            select, .date-controls button, #toggle-view-btn {
+                padding: 10px; 
             }
 
-            /* Le menu de configuration s'adapte à l'écran */
             #config-modal {
                 width: 90%;
                 left: 5%;
                 top: 50vh;
                 transform: translateY(-50%);
-                position: fixed; /* Reste fixe même si on scrolle les données */
+                position: fixed; 
             }
 
-            /* Le widget Pioupiou vient se poser juste au dessus du panneau de données */
             #pioupiou-widget-container {
                 left: 50% !important;
                 transform: translateX(-50%);
@@ -268,7 +305,6 @@
                 z-index: 2000;
             }
 
-            /* Force la vue colonne même si le mode réduit est activé */
             .compact-view .grid-chart-layout {
                 flex-direction: column;
             }
@@ -277,7 +313,6 @@
                 flex: none;
             }
         }
-
     </style>
 </head>
 <body>
@@ -289,9 +324,18 @@
     <div id="pioupiou-widget-container"></div>
 
     <div id="right-panel">
-        <!-- BOUTON ET MODAL DE CONFIGURATION -->
-        <button id="config-btn" title="Configuration">⚙️</button>
+        
+        <!-- NOUVELLE TOP BAR FLEX -->
+        <div class="top-bar">
+            <button id="config-btn" title="Configuration">⚙️</button>
+            <button id="toggle-view-btn">Mode simple</button>
+            <h2>
+                <span id="location-name">Puy Mary</span>  
+                <span id="coords-display">45.109°N, 2.676°E</span>
+            </h2>
+        </div>
 
+        <!-- MODAL DE CONFIGURATION -->
         <div id="config-modal">
             <h3>Configuration</h3>
             
@@ -318,14 +362,7 @@
         </div>
         <!-- FIN CONFIGURATION -->
 
-        <span class="date-controls" style="position: absolute; top: 0px; left: 50px;">
-            <button id="toggle-view-btn">Mode simple</button>
-        </span>
-
         <div class="header">
-            <h2><span id="location-name">Puy Mary</span>  <span style="font-size: 12px; color: #666; margin-bottom: 2px;" id="coords-display">45.109°N, 2.676°E</span></h2>
-            
-            
             <label for="model-select" style="font-size: 13px;">Modèle Météo :</label>
             <select id="model-select">
                 <option value="best_match">Meilleure correspondance</option>
@@ -345,8 +382,8 @@
 
             <div id="loading">Chargement des données...</div>
 
-            <div id="help" style="position: absolute; font-size: 20px; top: 10px; right: 10px;">
-                <a href="https://github.com/01ive/maMeteo" title="Info">ℹ️</a>
+            <div id="help" style="position: absolute; font-size: 20px; top: -10px; right: 10px;">
+                <a href="https://github.com/01ive/maMeteo" title="Info" style="text-decoration: none;">ℹ️</a>
             </div>
         </div>
 
@@ -640,7 +677,6 @@
                 const data = await response.json();
                 
                 if (data.error) throw new Error(data.reason);
-
 
                 // Après await response.json()
                 if (!data.hourly || !data.hourly.temperature_1000hPa || data.hourly.temperature_1000hPa.every(value => value === null)) {
