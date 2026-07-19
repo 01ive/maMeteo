@@ -918,10 +918,10 @@
                 const ceilData = exactThermalTops[i];
                 
                 if (ceilData.alt > globalElevation + 50) {
-                    const cloudIcon = ceilData.cloud ? ' <span style="font-size:10px;" title="Bloqué par les nuages">☁️</span>' : '';
+                    const cloudIcon = ceilData.cloud ? ' <span style="font-size:10px;" title="Bloqué par les nuages">☁️</span>' : '<div style="color: #00dbff">⬆</div>';
                     td.innerHTML = `<div style="color: #e74c3c; font-weight: bold; font-size: 13px;">${ceilData.alt}${cloudIcon}</div>`;
                 } else {
-                    td.innerHTML = `<div style="color: #999; font-size: 11px;">0</div>`;
+                    td.innerHTML = `<div style="color: #999; font-size: 11px;"></div>`;
                 }
                 td.style.backgroundColor = '#fdf2f0'; 
                 topRow.appendChild(td);
@@ -985,7 +985,7 @@
                     }
 
                     if (levelIndex === thermalTops[i]) {
-                        td.style.boxShadow = 'inset 0 4px 0 #e74c3c';
+                        td.style.boxShadow = 'inset 0 -4px 0 #e74c3c';
                         if (isCloudy) td.style.color = 'white'; 
                     }
 
