@@ -39,11 +39,10 @@
 
         #map { width: 100%; height: 100%; }
 
-        /* --- BARRE DE RECHERCHE CARTE --- */
         #search-box {
             position: absolute;
             top: 10px;
-            left: 50px; /* Aligné à côté des boutons de zoom */
+            left: 50px; 
             z-index: 1000;
             background: white;
             border-radius: 4px;
@@ -85,7 +84,6 @@
             position: relative; 
         }
 
-        /* --- NOUVEAU CONTENEUR FLEX POUR L'EN-TÊTE --- */
         .top-bar {
             display: flex;
             align-items: center;
@@ -124,7 +122,6 @@
             transition: all 0.2s;
         }
         #toggle-view-btn:hover { background-color: #e8f4f8; border-color: #2980b9; }
-        /* ------------------------------------------- */
 
         .header, .grid-container, .chart-container {
             flex-shrink: 0;
@@ -250,7 +247,6 @@
 
         .owm-widget { width: 100% !important; height: 100% !important; display: block;}
 
-        /* --- STYLES MENU DE CONFIGURATION --- */
         #config-btn {
             background: none;
             border: none;
@@ -290,75 +286,35 @@
         .btn-save { background-color: #2980b9; color: white; }
         .btn-cancel { background-color: #eee; color: #333; }
 
-        /* --- RESPONSIVE MOBILE --- */
         @media (max-width: 768px) {
             body { flex-direction: column; }
-
             #left-panel { flex: 0 0 45vh; width: 100%; height: 45vh; }
-
-            #search-box {
-                top: 10px;
-                left: 50px;
-                right: 10px;
-                width: calc(100% - 60px);
-            }
+            #search-box { top: 10px; left: 50px; right: 10px; width: calc(100% - 60px); }
             #search-input { width: 100%; }
-
-            #right-panel {
-                flex: 0 0 55vh; 
-                width: 100%;
-                height: 55vh;
-                border-left: none;
-                border-top: 3px solid #2980b9; 
-                padding: 10px;
-            }
-
+            #right-panel { flex: 0 0 55vh; width: 100%; height: 55vh; border-left: none; border-top: 3px solid #2980b9; padding: 10px; }
             .top-bar h2 { font-size: 1.2rem; }
             select, .date-controls button, #toggle-view-btn { padding: 10px; }
-
-            #config-modal {
-                width: 90%;
-                left: 5%;
-                top: 50vh;
-                transform: translateY(-50%);
-                position: fixed; 
-            }
-
-            #pioupiou-widget-container {
-                left: 50% !important;
-                transform: translateX(-50%);
-                top: 5px !important;
-                height: 95vh;
-                min-width: 80vw !important;
-                max-height: 90vh !important;
-                z-index: 2000;
-            }
-
+            #config-modal { width: 90%; left: 5%; top: 50vh; transform: translateY(-50%); position: fixed; }
+            #pioupiou-widget-container { left: 50% !important; transform: translateX(-50%); top: 5px !important; height: 95vh; min-width: 80vw !important; max-height: 90vh !important; z-index: 2000; }
             .compact-view .grid-chart-layout { flex-direction: column; }
             .compact-view .grid-chart-layout .chart-container,
-            .compact-view .grid-chart-layout .grid-container {
-                max-width: 100%;
-                flex: none;
-            }
+            .compact-view .grid-chart-layout .grid-container { max-width: 100%; flex: none; }
         }
     </style>
 </head>
 <body>
 
     <div id="left-panel">
-        <!-- NOUVELLE BOITE DE RECHERCHE -->
         <div id="search-box">
             <input type="text" id="search-input" placeholder="Rechercher un lieu (ville, sommet...)" />
             <button id="search-btn" title="Rechercher">🔍</button>
         </div>
-        
         <div id="map"></div>
     </div>
 
     <div id="pioupiou-widget-container"></div>
 
     <div id="right-panel">
-        
         <div class="top-bar">
             <span style="display: flex; align-items: center; gap: 5px;">
                 <button id="config-btn" title="Configuration">⚙️</button>
@@ -373,10 +329,8 @@
             </div>
         </div>
 
-        <!-- MODAL DE CONFIGURATION -->
         <div id="config-modal">
             <h3>Configuration</h3>
-            
             <div class="config-section">
                 <strong>Vents Table (km/h)</strong>
                 <div class="config-row"><label>Faible (<span style="color:#2ecc71;">Vert</span>)</label><input type="number" id="cfg-wind-light" step="1"></div>
@@ -384,7 +338,6 @@
                 <div class="config-row"><label>Fort (<span style="color:#e67e22;">Orange</span>)</label><input type="number" id="cfg-wind-strong" step="1"></div>
                 <div class="config-row"><label>Très fort (<span style="color:#e74c3c;">Rouge</span>)</label><input type="number" id="cfg-wind-gale" step="1"></div>
             </div>
-
             <div class="config-section">
                 <strong>Émagramme</strong>
                 <div class="config-row"><label>Seuil instable bas (Vert)</label><input type="number" id="cfg-lapse-green" step="0.1"></div>
@@ -392,29 +345,21 @@
                 <div class="config-row"><label>SKEW_FACTOR</label><input type="number" id="cfg-skew" step="0.01"></div>
                 <div class="config-row"><label>Surchauffe particule (°C)</label><input type="number" id="cfg-offset" step="0.1"></div>
             </div>
-
             <div class="config-actions">
                 <button class="btn-cancel" id="cfg-cancel">Annuler</button>
                 <button class="btn-save" id="cfg-save">Appliquer</button>
             </div>
         </div>
-        <!-- FIN CONFIGURATION -->
 
         <div class="header">
             <label for="model-select" style="font-size: 13px;">Modèle Météo :</label>
             <select id="model-select">
                 <option value="best_match">Meilleure correspondance</option>
-                <!-- <option value="ecmwf_ifs025">ECMWF (IFS)</option> -->
                 <option value="arome_france">AROME (Météo-France)</option>
                 <option value="meteofrance_arpege_europe">ARPEGE (Météo-France)</option>
                 <option value="icon_d2">ICON-D2 (DWD)</option>
                 <option value="icon_eu">ICON-EU (DWD)</option>
-                <!-- <option value="meteoswiss_icon_ch1">ICON-CH1 (Meteoswiss)</option>
-                <option value="meteoswiss_icon_ch2">ICON-CH2 (Meteoswiss)</option> -->
                 <option value="gfs_seamless">GFS (NOAA)</option>
-                <!-- <option value="ncep_gfs_seamless">NCEP GFS (NOAA)</option>
-                <option value="ncep_aigfs025">AI GFS (NOAA)</option>
-                <option value="ncep_gfs_global">GFS Global (NOAA)</option> -->
             </select>
 
             <div class="date-controls">
@@ -422,7 +367,6 @@
                 <h3 id="current-date-display">Date</h3>
                 <button id="btn-next">▶</button>
             </div>
-
             <div id="loading">Chargement des données...</div>
         </div>
 
@@ -431,10 +375,9 @@
                 <table id="wind-grid"></table>
                 <div class="legend-box">
                     <div class="legend-item"><div class="legend-color" style="background: rgba(170, 180, 190, 0.7);"></div> Nuages</div>
-                    <div class="legend-item"><div class="legend-color" style="border-bottom: 3px solid #e74c3c; height: 3px; background: transparent;"></div> Plafond Thermique</div>
+                    <div class="legend-item"><div class="legend-color" style="border-top: 4px solid #e74c3c; height: 4px; background: transparent;"></div> Plafond Thermique</div>
                 </div>
             </div>
-
             <div class="chart-container" id="chart-section">
                 <h3 id="chart-title">Profil vertical</h3>
                 <div class="canvas-wrapper">
@@ -454,10 +397,9 @@
             lapseGreen: 0.6,
             lapseRed: 0.9,
             skewFactor: 0.08,
-            parcelOffset: 2.5
+            parcelOffset: 1.5
         };
 
-        // --- GESTION DU MENU DE CONFIGURATION ---
         const configBtn = document.getElementById('config-btn');
         const configModal = document.getElementById('config-modal');
         const btnSave = document.getElementById('cfg-save');
@@ -475,9 +417,7 @@
             configModal.style.display = 'block';
         }
 
-        function closeConfig() {
-            configModal.style.display = 'none';
-        }
+        function closeConfig() { configModal.style.display = 'none'; }
 
         function saveConfig() {
             appConfig.windLight = parseFloat(document.getElementById('cfg-wind-light').value);
@@ -491,7 +431,6 @@
             
             closeConfig();
             
-            // Re-dessine l'interface avec les nouveaux paramètres
             if (globalWeatherData) {
                 renderGrid(globalWeatherData);
                 loadPioupiouStations(); 
@@ -502,7 +441,6 @@
         btnCancel.addEventListener('click', closeConfig);
         btnSave.addEventListener('click', saveConfig);
 
-        // Paramétré pour le Puy Mary
         let currentLat = 45.109; 
         let currentLon = 2.676;
 
@@ -515,15 +453,12 @@
 
         let marker = L.marker([currentLat, currentLon]).addTo(map);
 
-        // --- GESTION DE LA BARRE DE RECHERCHE ---
         const searchInput = document.getElementById('search-input');
         const searchBtn = document.getElementById('search-btn');
 
         async function performSearch() {
             const query = searchInput.value.trim();
             if (!query) return;
-
-            // Indiquer qu'une recherche est en cours
             const originalText = searchBtn.innerText;
             searchBtn.innerText = "⏳";
             
@@ -536,16 +471,12 @@
                     currentLat = parseFloat(result.lat);
                     currentLon = parseFloat(result.lon);
                     
-                    // Centrer la carte et déplacer le marqueur
                     map.setView([currentLat, currentLon], 11);
                     marker.setLatLng([currentLat, currentLon]);
                     
-                    // Mettre à jour l'affichage des titres
                     document.getElementById('coords-display').innerText = `${currentLat.toFixed(3)}°N, ${currentLon.toFixed(3)}°E`;
-                    // Utiliser le nom principal trouvé
                     document.getElementById('location-name').innerText = result.name || result.display_name.split(',')[0];
                     
-                    // Rafraîchir les données météo
                     fetchWeatherData();
                 } else {
                     alert("Lieu introuvable. Veuillez essayer une autre formulation.");
@@ -559,14 +490,8 @@
         }
 
         searchBtn.addEventListener('click', performSearch);
-        searchInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') {
-                performSearch();
-            }
-        });
-        // ----------------------------------------
+        searchInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') performSearch(); });
 
-        // --- GESTION DES BALISES PIOUPIOU ---
         let pioupiouLayer = L.layerGroup().addTo(map);
 
         async function loadPioupiouStations() {
@@ -585,19 +510,12 @@
                         const lon = station.location.longitude;
                         
                         const speedVal = station.measurements && station.measurements.wind_speed_avg !== null 
-                            ? Math.round(station.measurements.wind_speed_avg) 
-                            : null;
-                            
+                            ? Math.round(station.measurements.wind_speed_avg) : null;
                         const speed = speedVal !== null ? speedVal : '-';
-                        
                         const heading = station.measurements && station.measurements.wind_heading !== null 
-                            ? station.measurements.wind_heading 
-                            : 0;
-                        
+                            ? station.measurements.wind_heading : 0;
                         const name = station.meta && station.meta.name 
-                            ? station.meta.name 
-                            : `Pioupiou #${station.id}`;
-
+                            ? station.meta.name : `Pioupiou #${station.id}`;
                         const colorClass = speedVal !== null ? getWindColorClass(speedVal) : '';
 
                         const iconHtml = `
@@ -609,12 +527,7 @@
                             </div>
                         `;
 
-                        const pioupiouIcon = L.divIcon({
-                            className: 'pioupiou-marker',
-                            html: iconHtml,
-                            iconSize: [0, 0],
-                            popupAnchor: [0, -15]
-                        });
+                        const pioupiouIcon = L.divIcon({ className: 'pioupiou-marker', html: iconHtml, iconSize: [0, 0], popupAnchor: [0, -15] });
 
                         const min = station.measurements && station.measurements.wind_speed_min !== null ? station.measurements.wind_speed_min : '-';
                         const max = station.measurements && station.measurements.wind_speed_max !== null ? station.measurements.wind_speed_max : '-';
@@ -638,46 +551,34 @@
                             `).openPopup();
                         });
 
-                        marker.on('mouseout', function(e) {
-                            this.closePopup();
-                        });
-
+                        marker.on('mouseout', function(e) { this.closePopup(); });
                         marker.on('click', function(e) {
                             const container = document.getElementById('pioupiou-widget-container');
                             const widgetId = `PP${station.id}`; 
-                            
                             container.style.display = 'block';
-                            
                             container.innerHTML = `
                                 <div style="padding: 5px; text-align: right; background: #f8f8f8;">
                                     <button onclick="document.getElementById('pioupiou-widget-container').style.display='none'" style="cursor:pointer;">✕</button>
                                 </div>
                                 <div class="owm-widget" data-id="${widgetId}" data-show-live="yes" data-show-2h="yes" data-show-24h="no"></div>
                             `;
-
                             const script = document.createElement('script');
                             script.src = "https://www.openwindmap.org/js/widget-v1.js";
                             script.async = true;
-                            
                             document.body.appendChild(script);
                         });
                     });
                 }
-            } catch (error) {
-                console.error("Erreur lors du chargement des balises Pioupiou :", error);
-            }
+            } catch (error) { console.error("Erreur lors du chargement des balises Pioupiou :", error); }
         }
 
         loadPioupiouStations();
         setInterval(loadPioupiouStations, 10 * 60 * 1000);
 
-        // --- GESTION DE LA SÉLECTION SUR LA CARTE ---
         map.on('click', async function(e) {
             currentLat = e.latlng.lat;
             currentLon = e.latlng.lng;
-            
             marker.setLatLng([currentLat, currentLon]);
-            
             document.getElementById('coords-display').innerText = `${currentLat.toFixed(3)}°N, ${currentLon.toFixed(3)}°E`;
             document.getElementById('location-name').innerText = "Recherche...";
             
@@ -689,7 +590,6 @@
             } catch (error) {
                 document.getElementById('location-name').innerText = "Position sélectionnée";
             }
-
             fetchWeatherData();
         });
 
@@ -713,6 +613,7 @@
         let globalWeatherData = null;
         let sondageChartInstance = null;
         let currentDate = new Date(); 
+        let activeLevels = []; // Niveaux dynamiques incluant le Sol
 
         const modelSelect = document.getElementById('model-select');
         const windGrid = document.getElementById('wind-grid');
@@ -734,6 +635,88 @@
         const compactModeHours = [9, 13, 17];
         let isCompactView = false;
         let selectedHourIndex = 12;
+
+        // --- FONCTIONS D'INTERPOLATION (Option 2) ---
+        function interpolateValue(z, z1, val1, z2, val2) {
+            if (val1 === null || val2 === null || val1 === undefined || val2 === undefined) return null;
+            if (z1 === z2) return val1;
+            return val1 + (val2 - val1) * ((z - z1) / (z2 - z1));
+        }
+
+        function interpolateDirection(z, z1, dir1, z2, dir2) {
+            if (dir1 === null || dir2 === null || dir1 === undefined || dir2 === undefined) return null;
+            let diff = ((dir2 - dir1 + 540) % 360) - 180;
+            return (dir1 + diff * ((z - z1) / (z2 - z1)) + 360) % 360;
+        }
+
+        function updateActiveLevels() {
+            activeLevels = [];
+            // Garder uniquement les couches strictement au-dessus du sol
+            LEVELS.forEach(l => {
+                if (parseInt(l.alt) > globalElevation) {
+                    activeLevels.push({ ...l, z: parseInt(l.alt) });
+                }
+            });
+            // Ajouter la ligne d'élévation du Sol
+            activeLevels.push({ 
+                alt: Math.round(globalElevation) + "m (Sol)", 
+                isSurface: true, 
+                z: globalElevation 
+            });
+        }
+
+        function getLevelData(level, hourIndex, hourlyData) {
+            // Si c'est un palier standard, retourner la donnée brute
+            if (!level.isSurface) {
+                return {
+                    temp: hourlyData[`temperature_${level.hpa}hPa`][hourIndex],
+                    dew: hourlyData[`dewpoint_${level.hpa}hPa`][hourIndex],
+                    windSpeed: hourlyData[`windspeed_${level.hpa}hPa`][hourIndex],
+                    windDir: hourlyData[`winddirection_${level.hpa}hPa`][hourIndex],
+                    hpa: parseInt(level.hpa)
+                };
+            }
+            
+            // Si c'est le Sol, on interpole entre le palier juste au-dessus et juste en-dessous
+            let levelAbove = [...LEVELS].reverse().find(l => parseInt(l.alt) > globalElevation);
+            let levelBelow = LEVELS.find(l => parseInt(l.alt) <= globalElevation);
+            
+            if (!levelAbove || !levelBelow) {
+                // Repli si l'altitude est hors modèle (très rare)
+                let closest = levelAbove || levelBelow || LEVELS[LEVELS.length - 1];
+                return {
+                    temp: hourlyData[`temperature_${closest.hpa}hPa`][hourIndex],
+                    dew: hourlyData[`dewpoint_${closest.hpa}hPa`][hourIndex],
+                    windSpeed: hourlyData[`windspeed_${closest.hpa}hPa`][hourIndex],
+                    windDir: hourlyData[`winddirection_${closest.hpa}hPa`][hourIndex],
+                    hpa: parseInt(closest.hpa)
+                };
+            }
+            
+            let zA = parseInt(levelAbove.alt);
+            let zB = parseInt(levelBelow.alt);
+            
+            let tA = hourlyData[`temperature_${levelAbove.hpa}hPa`][hourIndex];
+            let tB = hourlyData[`temperature_${levelBelow.hpa}hPa`][hourIndex];
+            let dspA = hourlyData[`windspeed_${levelAbove.hpa}hPa`][hourIndex];
+            let dspB = hourlyData[`windspeed_${levelBelow.hpa}hPa`][hourIndex];
+            let dirA = hourlyData[`winddirection_${levelAbove.hpa}hPa`][hourIndex];
+            let dirB = hourlyData[`winddirection_${levelBelow.hpa}hPa`][hourIndex];
+            let dewA = hourlyData[`dewpoint_${levelAbove.hpa}hPa`][hourIndex];
+            let dewB = hourlyData[`dewpoint_${levelBelow.hpa}hPa`][hourIndex];
+            
+            let pA = parseInt(levelAbove.hpa);
+            let pB = parseInt(levelBelow.hpa);
+
+            return {
+                temp: interpolateValue(globalElevation, zA, tA, zB, tB),
+                dew: interpolateValue(globalElevation, zA, dewA, zB, dewB),
+                windSpeed: interpolateValue(globalElevation, zA, dspA, zB, dspB),
+                windDir: interpolateDirection(globalElevation, zA, dirA, zB, dirB),
+                hpa: interpolateValue(globalElevation, zA, pA, zB, pB)
+            };
+        }
+        // --------------------------------------------
 
         function getCardinalDirection(angle) {
             const directions = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW', 'N'];
@@ -759,7 +742,7 @@
             chartSection.style.display = 'none';
 
             const dateStr = getApiDateString(currentDate);
-            const url = `https://api.open-meteo.com/v1/forecast?latitude=${currentLat}&longitude=${currentLon}&hourly=${windSpeedVars},${windDirVars},${tempVars},${dewVars},temperature_2m,precipitation&models=${model}&start_date=${dateStr}&end_date=${dateStr}&timezone=Europe%2FBerlin`;
+            const url = `https://api.open-meteo.com/v1/forecast?latitude=${currentLat}&longitude=${currentLon}&hourly=${windSpeedVars},${windDirVars},${tempVars},${dewVars},temperature_2m,precipitation&models=${model}&start_date=${dateStr}&end_date=${dateStr}&timezone=Europe%2FParis`;
 
             try {
                 const response = await fetch(url);
@@ -776,6 +759,9 @@
 
                 globalElevation = data.elevation || 0; 
                 globalWeatherData = data.hourly;
+                
+                // Mettre à jour la liste des altitudes en éliminant les valeurs souterraines
+                updateActiveLevels();
                 
                 renderGrid(globalWeatherData);
                 drawSondage(14, "14h", false); 
@@ -811,7 +797,6 @@
         function centerTable() {
             const container = document.querySelector('.grid-container');
             const table = document.getElementById('wind-grid');
-            
             if (container && table) {
                 const scrollPos = (table.offsetWidth - container.clientWidth) / 2;
                 container.scrollLeft = scrollPos;
@@ -853,26 +838,21 @@
 
             const thermalTops = [];
             for (let i = 0; i < 24; i++) {
-                let currentTopIdx = 11; 
+                let currentTopIdx = activeLevels.length - 1; // Par défaut: au niveau du sol
                 
                 if (hourlyData.temperature_2m && hourlyData.temperature_2m[i] !== undefined) {
                     let tBase = hourlyData.temperature_2m[i];
                     let zBase = globalElevation;
                     let tParcelBase = tBase + appConfig.parcelOffset; 
                     
-                    for (let j = 11; j >= 0; j--) {
-                        let level = LEVELS[j];
-                        let z = parseInt(level.alt);
+                    for (let j = activeLevels.length - 1; j >= 0; j--) {
+                        let level = activeLevels[j];
+                        let data = getLevelData(level, i, hourlyData);
+                        let tEnv = data.temp;
                         
-                        if (z <= zBase) {
-                            currentTopIdx = j;
-                            continue;
-                        }
-                        
-                        let tEnv = hourlyData[`temperature_${level.hpa}hPa`][i];
                         if (tEnv === null || tEnv === undefined) break;
                         
-                        let dz = z - zBase; 
+                        let dz = level.z - zBase; 
                         let tParcel = tParcelBase - (dz / 100) * 0.98;
                         
                         if (tParcel >= tEnv) {
@@ -886,32 +866,38 @@
             }
 
             const visibleLevels = isCompactView
-                ? LEVELS.filter(level => compactModeRows.includes(level.alt))
-                : LEVELS;
+                ? activeLevels.filter(level => compactModeRows.includes(level.alt) || level.isSurface)
+                : activeLevels;
 
             visibleLevels.forEach(level => {
                 const row = document.createElement('tr');
                 const thY = document.createElement('th');
                 thY.className = 'y-axis';
-                thY.innerText = `${level.alt}`;
+                thY.innerText = level.alt;
+                // Mettre en évidence la ligne du sol
+                if (level.isSurface) {
+                    thY.style.color = '#2980b9';
+                    thY.style.fontWeight = 'bold';
+                    row.style.borderBottom = '2px solid #2980b9';
+                }
                 row.appendChild(thY);
 
-                const levelIndex = LEVELS.indexOf(level);
+                const levelIndex = activeLevels.indexOf(level);
 
                 visibleHourIndices.forEach(i => {
                     const td = document.createElement('td');
+                    const data = getLevelData(level, i, hourlyData);
                     
-                    if (!hourlyData[`windspeed_${level.hpa}hPa`] || hourlyData[`windspeed_${level.hpa}hPa`][i] === undefined) {
+                    if (data.windSpeed === null || data.windSpeed === undefined) {
                         td.innerText = "-";
                         row.appendChild(td);
                         return;
                     }
 
-                    const speed = Math.round(hourlyData[`windspeed_${level.hpa}hPa`][i]);
-                    const direction = hourlyData[`winddirection_${level.hpa}hPa`][i];
-                    
-                    const temp = hourlyData[`temperature_${level.hpa}hPa`][i];
-                    const dew = hourlyData[`dewpoint_${level.hpa}hPa`][i];
+                    const speed = Math.round(data.windSpeed);
+                    const direction = data.windDir;
+                    const temp = data.temp;
+                    const dew = data.dew;
                     let isCloudy = false;
 
                     if (temp !== null && dew !== null) {
@@ -919,16 +905,9 @@
                         let denseThreshold = 1.5;
                         let lightThreshold = 3.0;
 
-                        if (temp < -30) {
-                            denseThreshold = 5.0;
-                            lightThreshold = 8.0;
-                        } else if (temp < -10) {
-                            denseThreshold = 3.0;
-                            lightThreshold = 5.0;
-                        } else if (temp < 0) {
-                            denseThreshold = 2.0;
-                            lightThreshold = 4.0;
-                        }
+                        if (temp < -30) { denseThreshold = 5.0; lightThreshold = 8.0; } 
+                        else if (temp < -10) { denseThreshold = 3.0; lightThreshold = 5.0; } 
+                        else if (temp < 0) { denseThreshold = 2.0; lightThreshold = 4.0; }
 
                         if (spread <= denseThreshold) {
                             td.style.backgroundColor = 'rgba(170, 180, 190, 0.7)';
@@ -941,13 +920,13 @@
                         }
                     }
 
-                    let z = parseInt(level.alt);
-                    if (levelIndex === thermalTops[i] && z >= globalElevation) {
-                        td.style.boxShadow = 'inset 0 -4px 0 #e74c3c';
+                    // Correction visuelle de la ligne de thermique en haut de la cellule (inset positif)
+                    if (levelIndex === thermalTops[i]) {
+                        td.style.boxShadow = 'inset 0 4px 0 #e74c3c';
                         if (isCloudy) td.style.color = 'white'; 
                     }
 
-                    if (speed === null || isNaN(speed)) {
+                    if (isNaN(speed)) {
                         td.innerHTML = "-";
                     } else {
                         const colorClass = getWindColorClass(speed);
@@ -963,7 +942,6 @@
                 table.appendChild(row);
             });
 
-            // --- LIGNE POUR LA PLUVIOMÉTRIE ---
             const rainRow = document.createElement('tr');
             const thRain = document.createElement('th');
             thRain.className = 'y-axis';
@@ -973,22 +951,16 @@
             visibleHourIndices.forEach(i => {
                 const td = document.createElement('td');
                 const precip = hourlyData.precipitation ? hourlyData.precipitation[i] : 0;
-
-                if (precip > 0) {
-                    td.innerHTML = `<div style="color: #3498db; font-weight: bold; font-size: 12px;">${precip}</div>`;
-                } else {
-                    td.innerHTML = "";
-                }
+                if (precip > 0) td.innerHTML = `<div style="color: #3498db; font-weight: bold; font-size: 12px;">${precip}</div>`;
+                else td.innerHTML = "";
                 rainRow.appendChild(td);
             });
             table.appendChild(rainRow);
-            // ---------------------------------------------
 
             windGrid.appendChild(table);
 
             const chosenHourIndex = visibleHourIndices.includes(selectedHourIndex)
-                ? selectedHourIndex
-                : visibleHourIndices[0];
+                ? selectedHourIndex : visibleHourIndices[0];
             const chosenDate = new Date(hourlyData.time[chosenHourIndex]);
             drawSondage(chosenHourIndex, `${chosenDate.getHours()}h`, false);
 
@@ -1004,29 +976,26 @@
             const activeHeader = document.getElementById(`hour-header-${hourIndex}`);
             if (activeHeader) activeHeader.classList.add('active');
 
-            const reversedLevels = [...LEVELS].reverse();
-            const yLabels = reversedLevels.map(l => `${l.alt}`);
+            // Inverser l'ordre des niveaux actifs pour le graphique (Sol en premier, puis de bas en haut)
+            const reversedLevels = [...activeLevels].reverse();
+            const yLabels = reversedLevels.map(l => l.alt);
             
-            const originalTemperatures = reversedLevels.map(l => {
-                const val = globalWeatherData[`temperature_${l.hpa}hPa`][hourIndex];
-                return val !== null && val !== undefined ? val : null;
-            });
-            const originalDewpoints = reversedLevels.map(l => {
-                const val = globalWeatherData[`dewpoint_${l.hpa}hPa`][hourIndex];
-                return val !== null && val !== undefined ? val : null;
-            });
+            const levelDataArray = reversedLevels.map(l => getLevelData(l, hourIndex, globalWeatherData));
+            
+            const originalTemperatures = levelDataArray.map(d => d.temp);
+            const originalDewpoints = levelDataArray.map(d => d.dew);
 
             const skew = appConfig.skewFactor;
             
             const skewedTemperatures = originalTemperatures.map((t, i) => {
                 if (t === null) return null;
-                const p = parseInt(reversedLevels[i].hpa);
+                const p = levelDataArray[i].hpa;
                 return skew === 0 ? t : t + (1000 - p) * skew;
             });
 
             const skewedDewpoints = originalDewpoints.map((t, i) => {
                 if (t === null) return null;
-                const p = parseInt(reversedLevels[i].hpa);
+                const p = levelDataArray[i].hpa;
                 return skew === 0 ? t : t + (1000 - p) * skew;
             });
             
@@ -1036,16 +1005,9 @@
             const skewedParcelTemperatures = [];
             let parcelReachedEnv = false;
 
-            let startDrawIndex = 0;
-            reversedLevels.forEach((level, i) => {
-                if (parseInt(level.alt) <= globalElevation) {
-                    startDrawIndex = i;
-                }
-            });
-
             reversedLevels.forEach((level, i) => {
                 const envTemp = originalTemperatures[i];
-                const p = parseInt(level.hpa);
+                const p = levelDataArray[i].hpa;
                 const skewedEnvTemp = (envTemp === null || skew === 0) ? envTemp : envTemp + (1000 - p) * skew; 
 
                 if (parcelBaseTempAtSite === null || envTemp === null || envTemp === undefined) {
@@ -1053,13 +1015,7 @@
                     return;
                 }
 
-                if (i < startDrawIndex) {
-                    skewedParcelTemperatures.push(null);
-                    return;
-                }
-
-                const levelAlt = parseInt(level.alt);
-                const dz = levelAlt - globalElevation;
+                const dz = level.z - globalElevation;
                 const parcelTemp = parcelBaseTempAtSite - (dz / 100) * 0.98;
                 const skewedParcelTemp = skew === 0 ? parcelTemp : parcelTemp + (1000 - p) * skew; 
 
@@ -1067,7 +1023,8 @@
                     if (parcelTemp >= envTemp) {
                         skewedParcelTemperatures.push(skewedParcelTemp);
                     } else {
-                        skewedParcelTemperatures.push(null);
+                        // On pousse la valeur pour prolonger visuellement l'ascension jusqu'à l'intersection
+                        skewedParcelTemperatures.push(skewedParcelTemp);
                         parcelReachedEnv = true;
                     }
                 } else {
@@ -1092,31 +1049,32 @@
                     pointHitRadius: 10,
                     segment: {
                         borderColor: ctx => {
-                                    if (ctx.p0DataIndex === undefined || ctx.p1DataIndex === undefined) return '#333';
-                                    
-                                    const i0 = ctx.p0DataIndex; 
-                                    const i1 = ctx.p1DataIndex; 
-                                    
-                                    const z0 = parseInt(reversedLevels[i0].alt);
-                                    const z1 = parseInt(reversedLevels[i1].alt);
-                                    
-                                    const t0 = originalTemperatures[i0];
-                                    const t1 = originalTemperatures[i1];
+                            if (ctx.p0DataIndex === undefined || ctx.p1DataIndex === undefined) return '#333';
+                            
+                            const i0 = ctx.p0DataIndex; 
+                            const i1 = ctx.p1DataIndex; 
+                            
+                            const z0 = reversedLevels[i0].z;
+                            const z1 = reversedLevels[i1].z;
+                            
+                            const t0 = originalTemperatures[i0];
+                            const t1 = originalTemperatures[i1];
 
-                                    if (t0 === null || t1 === null) return '#333';
+                            if (t0 === null || t1 === null) return '#333';
 
-                                    const dz = z1 - z0; 
-                                    const dt = t0 - t1; 
-                                    
-                                    const lapseRate = (dt / dz) * 100;
+                            const dz = z1 - z0; 
+                            const dt = t0 - t1; 
+                            
+                            if(dz === 0) return '#333';
+                            const lapseRate = (dt / dz) * 100;
 
-                                    if (lapseRate < appConfig.lapseGreen) return '#2ecc71'; 
-                                    if (lapseRate > appConfig.lapseRed) return '#e74c3c'; 
-                                    return '#000000'; 
-                                }
-                            }
+                            if (lapseRate < appConfig.lapseGreen) return '#2ecc71'; 
+                            if (lapseRate > appConfig.lapseRed) return '#e74c3c'; 
+                            return '#000000'; 
                         }
-                    ];
+                    }
+                }
+            ];
 
             datasets.push({
                 label: `Parcelle sèche (+${appConfig.parcelOffset}°C)`,
@@ -1169,14 +1127,13 @@
                             callbacks: {
                                 label: function(context) {
                                     const index = context.dataIndex;
-                                    const isTemp = context.datasetIndex === 0;
                                     let realValue = null;
                                     if (context.datasetIndex === 0) realValue = originalTemperatures[index];
                                     if (context.datasetIndex === 2) realValue = originalDewpoints[index];
                                     
                                     if (context.datasetIndex === 1) {
                                         if (context.raw === null) return `${context.dataset.label}: N/A`;
-                                        const p = parseInt(reversedLevels[index].hpa);
+                                        const p = levelDataArray[index].hpa;
                                         const skew = appConfig.skewFactor;
                                         realValue = skew === 0 ? context.raw : context.raw - (1000 - p) * skew;
                                     }
