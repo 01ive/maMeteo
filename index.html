@@ -397,7 +397,7 @@
             lapseGreen: 0.6,
             lapseRed: 0.9,
             skewFactor: 0.08,
-            parcelOffset: 1.5
+            parcelOffset: 0.5
         };
 
         const configBtn = document.getElementById('config-btn');
@@ -836,14 +836,22 @@
             });
             table.appendChild(headerRow);
 
-            const thermalTops = [];
+            // 1. NOUVEAU CALCUL EXACT DU PLAFOND THERMIQUE (Interpolation linéaire)
+            const thermalTops = [];      // Pour le repère visuel (index du palier)
+            const exactThermalTops = []; // Pour la valeur précise en mètres
+
             for (let i = 0; i < 24; i++) {
-                let currentTopIdx = activeLevels.length - 1; // Par défaut: au niveau du sol
+                let currentTopIdx = activeLevels.length - 1; // Sol par défaut
+                let exactAlt = Math.round(globalElevation);
                 
                 if (hourlyData.temperature_2m && hourlyData.temperature_2m[i] !== undefined) {
                     let tBase = hourlyData.temperature_2m[i];
                     let zBase = globalElevation;
                     let tParcelBase = tBase + appConfig.parcelOffset; 
+                    
+                    let prevZ = zBase;
+                    let prevTEnv = getLevelData(activeLevels[activeLevels.length - 1], i, hourlyData).temp;
+                    let prevTParcel = tParcelBase;
                     
                     for (let j = activeLevels.length - 1; j >= 0; j--) {
                         let level = activeLevels[j];
@@ -856,15 +864,53 @@
                         let tParcel = tParcelBase - (dz / 100) * 0.98;
                         
                         if (tParcel >= tEnv) {
+                            // La particule monte encore
                             currentTopIdx = j; 
+                            prevZ = level.z;
+                            prevTEnv = tEnv;
+                            prevTParcel = tParcel;
+                            exactAlt = level.z; 
                         } else {
+                            // Croisement détecté entre le palier précédent et le palier actuel
+                            // Interpolation pour trouver l'altitude exacte
+                            let deltaPrev = prevTParcel - prevTEnv; // Écart positif
+                            let deltaCurr = tEnv - tParcel;         // Écart positif (inversé)
+                            
+                            if (deltaPrev + deltaCurr > 0 && prevZ !== level.z) {
+                                let ratio = deltaPrev / (deltaPrev + deltaCurr);
+                                exactAlt = prevZ + ratio * (level.z - prevZ);
+                            }
                             break; 
                         }
                     }
                 }
                 thermalTops.push(currentTopIdx);
+                exactThermalTops.push(Math.round(exactAlt));
             }
 
+            // 2. AJOUT DE LA NOUVELLE LIGNE "PLAFOND (m)" AU DESSUS DE LA GRILLE
+            const topRow = document.createElement('tr');
+            const thTop = document.createElement('th');
+            thTop.className = 'y-axis';
+            thTop.innerText = 'Plafond (m)';
+            thTop.style.color = '#e74c3c';
+            topRow.appendChild(thTop);
+
+            visibleHourIndices.forEach(i => {
+                const td = document.createElement('td');
+                const alt = exactThermalTops[i];
+                // On n'affiche le plafond que si ça déclenche au moins un peu (ex: Sol + 50m)
+                if (alt > globalElevation + 50) {
+                    td.innerHTML = `<div style="color: #e74c3c; font-weight: bold; font-size: 13px;">${alt}</div>`;
+                } else {
+                    td.innerHTML = `<div style="color: #999; font-size: 11px;">0</div>`;
+                }
+                td.style.backgroundColor = '#fdf2f0'; // Petit fond subtil pour cette ligne clé
+                topRow.appendChild(td);
+            });
+            table.appendChild(topRow);
+
+            // Rendu des autres niveaux de la grille
             const visibleLevels = isCompactView
                 ? activeLevels.filter(level => compactModeRows.includes(level.alt) || level.isSurface)
                 : activeLevels;
@@ -874,7 +920,7 @@
                 const thY = document.createElement('th');
                 thY.className = 'y-axis';
                 thY.innerText = level.alt;
-                // Mettre en évidence la ligne du sol
+                
                 if (level.isSurface) {
                     thY.style.color = '#2980b9';
                     thY.style.fontWeight = 'bold';
@@ -920,7 +966,6 @@
                         }
                     }
 
-                    // Correction visuelle de la ligne de thermique en haut de la cellule (inset positif)
                     if (levelIndex === thermalTops[i]) {
                         td.style.boxShadow = 'inset 0 4px 0 #e74c3c';
                         if (isCloudy) td.style.color = 'white'; 
@@ -942,6 +987,7 @@
                 table.appendChild(row);
             });
 
+            // Ligne de pluie
             const rainRow = document.createElement('tr');
             const thRain = document.createElement('th');
             thRain.className = 'y-axis';
