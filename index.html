@@ -742,8 +742,9 @@
             chartSection.style.display = 'none';
 
             const dateStr = getApiDateString(currentDate);
-            const url = `https://api.open-meteo.com/v1/forecast?latitude=${currentLat}&longitude=${currentLon}&hourly=${windSpeedVars},${windDirVars},${tempVars},${dewVars},temperature_2m,precipitation&models=${model}&start_date=${dateStr}&end_date=${dateStr}&timezone=Europe%2FParis`;
-
+            // MODIFIE CETTE LIGNE :
+            const url = `https://api.open-meteo.com/v1/forecast?latitude=${currentLat}&longitude=${currentLon}&hourly=${windSpeedVars},${windDirVars},${tempVars},${dewVars},temperature_2m,dewpoint_2m,precipitation&models=${model}&start_date=${dateStr}&end_date=${dateStr}&timezone=Europe%2FParis`;
+            
             try {
                 const response = await fetch(url);
                 const data = await response.json();
@@ -843,11 +844,17 @@
             for (let i = 0; i < 24; i++) {
                 let currentTopIdx = activeLevels.length - 1; // Sol par défaut
                 let exactAlt = Math.round(globalElevation);
+                let isCloudCapped = false; // Nouveau : savoir si on tape le nuage
                 
                 if (hourlyData.temperature_2m && hourlyData.temperature_2m[i] !== undefined) {
                     let tBase = hourlyData.temperature_2m[i];
+                    let tdBase = hourlyData.dewpoint_2m[i]; // Point de rosée au sol
                     let zBase = globalElevation;
                     let tParcelBase = tBase + appConfig.parcelOffset; 
+                    
+                    // Calcul de la base des nuages (Lifting Condensation Level)
+                    // Formule de Hennig : LCL = Altitude + (125 * (Température - PointDeRosée))
+                    let cloudBaseAlt = zBase + ((tBase - tdBase) * 125);
                     
                     let prevZ = zBase;
                     let prevTEnv = getLevelData(activeLevels[activeLevels.length - 1], i, hourlyData).temp;
@@ -861,20 +868,18 @@
                         if (tEnv === null || tEnv === undefined) break;
                         
                         let dz = level.z - zBase; 
-                        let tParcel = tParcelBase - (dz / 100) * 0.98;
+                        // On passe de 0.98 à 1.0 pour simuler la dilution du thermique (entrainement)
+                        let tParcel = tParcelBase - (dz / 100) * 1.0; 
                         
                         if (tParcel >= tEnv) {
-                            // La particule monte encore
                             currentTopIdx = j; 
                             prevZ = level.z;
                             prevTEnv = tEnv;
                             prevTParcel = tParcel;
                             exactAlt = level.z; 
                         } else {
-                            // Croisement détecté entre le palier précédent et le palier actuel
-                            // Interpolation pour trouver l'altitude exacte
-                            let deltaPrev = prevTParcel - prevTEnv; // Écart positif
-                            let deltaCurr = tEnv - tParcel;         // Écart positif (inversé)
+                            let deltaPrev = prevTParcel - prevTEnv; 
+                            let deltaCurr = tEnv - tParcel;         
                             
                             if (deltaPrev + deltaCurr > 0 && prevZ !== level.z) {
                                 let ratio = deltaPrev / (deltaPrev + deltaCurr);
@@ -883,9 +888,21 @@
                             break; 
                         }
                     }
+
+                    // BRIDAGE PAR LE NUAGE
+                    // Si l'intersection sèche est plus haute que la base du nuage, le plafond est la base du nuage
+                    if (exactAlt > cloudBaseAlt) {
+                        exactAlt = Math.max(cloudBaseAlt, zBase); // On s'assure que ça ne descend pas sous le sol
+                        isCloudCapped = true;
+                        
+                        // On réajuste l'index visuel (le trait rouge) pour qu'il matche l'altitude du nuage
+                        currentTopIdx = activeLevels.findIndex(l => l.z <= exactAlt);
+                        if(currentTopIdx === -1) currentTopIdx = activeLevels.length - 1;
+                    }
                 }
+                
                 thermalTops.push(currentTopIdx);
-                exactThermalTops.push(Math.round(exactAlt));
+                exactThermalTops.push({ alt: Math.round(exactAlt), cloud: isCloudCapped });
             }
 
             // 2. AJOUT DE LA NOUVELLE LIGNE "PLAFOND (m)" AU DESSUS DE LA GRILLE
@@ -898,14 +915,15 @@
 
             visibleHourIndices.forEach(i => {
                 const td = document.createElement('td');
-                const alt = exactThermalTops[i];
-                // On n'affiche le plafond que si ça déclenche au moins un peu (ex: Sol + 50m)
-                if (alt > globalElevation + 50) {
-                    td.innerHTML = `<div style="color: #e74c3c; font-weight: bold; font-size: 13px;">${alt}</div>`;
+                const ceilData = exactThermalTops[i];
+                
+                if (ceilData.alt > globalElevation + 50) {
+                    const cloudIcon = ceilData.cloud ? ' <span style="font-size:10px;" title="Bloqué par les nuages">☁️</span>' : '';
+                    td.innerHTML = `<div style="color: #e74c3c; font-weight: bold; font-size: 13px;">${ceilData.alt}${cloudIcon}</div>`;
                 } else {
                     td.innerHTML = `<div style="color: #999; font-size: 11px;">0</div>`;
                 }
-                td.style.backgroundColor = '#fdf2f0'; // Petit fond subtil pour cette ligne clé
+                td.style.backgroundColor = '#fdf2f0'; 
                 topRow.appendChild(td);
             });
             table.appendChild(topRow);
