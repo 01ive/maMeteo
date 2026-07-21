@@ -169,29 +169,13 @@
             gap: 20px;
             width: 100%;
         }
-        .grid-chart-layout .grid-container,
-        .grid-chart-layout .chart-container {
-            width: 100%;
-            min-width: 0;
-        }
-        .compact-view .grid-chart-layout {
-            flex-direction: row;
-            align-items: flex-start;
-        }
-        .compact-view .grid-chart-layout .grid-container {
-            flex: 1 1 0;
-        }
-        .compact-view .grid-chart-layout .chart-container {
-            flex: 0 0 320px;
-            max-width: 320px;
-        }
 
         .grid-container {
             overflow-x: auto;
             background: white;
             border-radius: 8px;
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-            margin-bottom: 20px;
+            min-width: 100px;
         }
         
         .grid-container::-webkit-scrollbar { height: 8px; }
