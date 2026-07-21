@@ -207,7 +207,7 @@
 
         .chart-container { background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); display: none; }
         #chart-title { text-align: center; margin-top: 0; font-size: 15px; color: #2c3e50; margin-bottom: 15px; }
-        .canvas-wrapper { position: relative; height: 350px; width: 100%; }
+        .canvas-wrapper { position: relative; height: 450px; width: 100%; } /* Hauteur augmentée pour la proportionnalité linéaire */
         
         .legend-box { font-size: 11px; display: flex; justify-content: center; gap: 15px; margin-top: 8px; color: #555; }
         .legend-item { display: flex; align-items: center; gap: 5px; }
@@ -597,7 +597,7 @@
         let globalWeatherData = null;
         let sondageChartInstance = null;
         let currentDate = new Date(); 
-        let activeLevels = []; // Niveaux dynamiques incluant le Sol
+        let activeLevels = []; 
 
         const modelSelect = document.getElementById('model-select');
         const windGrid = document.getElementById('wind-grid');
@@ -620,7 +620,6 @@
         let isCompactView = false;
         let selectedHourIndex = 12;
 
-        // --- FONCTIONS D'INTERPOLATION (Option 2) ---
         function interpolateValue(z, z1, val1, z2, val2) {
             if (val1 === null || val2 === null || val1 === undefined || val2 === undefined) return null;
             if (z1 === z2) return val1;
@@ -635,13 +634,11 @@
 
         function updateActiveLevels() {
             activeLevels = [];
-            // Garder uniquement les couches strictement au-dessus du sol
             LEVELS.forEach(l => {
                 if (parseInt(l.alt) > globalElevation) {
                     activeLevels.push({ ...l, z: parseInt(l.alt) });
                 }
             });
-            // Ajouter la ligne d'élévation du Sol
             activeLevels.push({ 
                 alt: Math.round(globalElevation) + "m (Sol)", 
                 isSurface: true, 
@@ -650,7 +647,6 @@
         }
 
         function getLevelData(level, hourIndex, hourlyData) {
-            // Si c'est un palier standard, retourner la donnée brute
             if (!level.isSurface) {
                 return {
                     temp: hourlyData[`temperature_${level.hpa}hPa`][hourIndex],
@@ -661,12 +657,10 @@
                 };
             }
             
-            // Si c'est le Sol, on interpole entre le palier juste au-dessus et juste en-dessous
             let levelAbove = [...LEVELS].reverse().find(l => parseInt(l.alt) > globalElevation);
             let levelBelow = LEVELS.find(l => parseInt(l.alt) <= globalElevation);
             
             if (!levelAbove || !levelBelow) {
-                // Repli si l'altitude est hors modèle (très rare)
                 let closest = levelAbove || levelBelow || LEVELS[LEVELS.length - 1];
                 return {
                     temp: hourlyData[`temperature_${closest.hpa}hPa`][hourIndex],
@@ -700,7 +694,6 @@
                 hpa: interpolateValue(globalElevation, zA, pA, zB, pB)
             };
         }
-        // --------------------------------------------
 
         function getCardinalDirection(angle) {
             const directions = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW', 'N'];
@@ -726,7 +719,6 @@
             chartSection.style.display = 'none';
 
             const dateStr = getApiDateString(currentDate);
-            // MODIFIE CETTE LIGNE :
             const url = `https://api.open-meteo.com/v1/forecast?latitude=${currentLat}&longitude=${currentLon}&hourly=${windSpeedVars},${windDirVars},${tempVars},${dewVars},temperature_2m,dewpoint_2m,precipitation&models=${model}&start_date=${dateStr}&end_date=${dateStr}&timezone=Europe%2FParis`;
             
             try {
@@ -745,7 +737,6 @@
                 globalElevation = data.elevation || 0; 
                 globalWeatherData = data.hourly;
                 
-                // Mettre à jour la liste des altitudes en éliminant les valeurs souterraines
                 updateActiveLevels();
                 
                 renderGrid(globalWeatherData);
@@ -821,24 +812,21 @@
             });
             table.appendChild(headerRow);
 
-            // 1. NOUVEAU CALCUL EXACT DU PLAFOND THERMIQUE (Interpolation linéaire)
-            const thermalTops = [];      // Pour le repère visuel (index du palier)
-            const exactThermalTops = []; // Pour la valeur précise en mètres
+            const thermalTops = [];      
+            const exactThermalTops = []; 
 
             for (let i = 0; i < 24; i++) {
-                let currentTopIdx = activeLevels.length - 1; // Sol par défaut
+                let currentTopIdx = activeLevels.length - 1; 
                 let exactAlt = Math.round(globalElevation);
-                let isCloudCapped = false; // Nouveau : savoir si on tape le nuage
+                let isCloudCapped = false; 
                 
                 if (hourlyData.temperature_2m && hourlyData.temperature_2m[i] !== undefined) {
                     let tBase = hourlyData.temperature_2m[i];
-                    let tdBase = hourlyData.dewpoint_2m[i]; // Point de rosée au sol
+                    let tdBase = hourlyData.dewpoint_2m[i]; 
                     let zBase = globalElevation;
                     let tParcelBase = tBase + appConfig.parcelOffset; 
                     
-                    // Calcul de la base des nuages (Lifting Condensation Level)
-                    // Formule de Hennig : LCL = Altitude + (125 * (Température - PointDeRosée))
-                    let cloudBaseAlt = zBase + ((tBase - tdBase) * 125);
+                    let cloudBaseAlt = zBase + Math.max(0, (tBase - tdBase) * 125);
                     
                     let prevZ = zBase;
                     let prevTEnv = getLevelData(activeLevels[activeLevels.length - 1], i, hourlyData).temp;
@@ -852,8 +840,7 @@
                         if (tEnv === null || tEnv === undefined) break;
                         
                         let dz = level.z - zBase; 
-                        // On passe de 0.98 à 1.0 pour simuler la dilution du thermique (entrainement)
-                        let tParcel = tParcelBase - (dz / 100) * 1.0; 
+                        let tParcel = tParcelBase - (dz / 100) * 0.98; 
                         
                         if (tParcel >= tEnv) {
                             currentTopIdx = j; 
@@ -873,13 +860,10 @@
                         }
                     }
 
-                    // BRIDAGE PAR LE NUAGE
-                    // Si l'intersection sèche est plus haute que la base du nuage, le plafond est la base du nuage
                     if (exactAlt > cloudBaseAlt) {
-                        exactAlt = Math.max(cloudBaseAlt, zBase); // On s'assure que ça ne descend pas sous le sol
+                        exactAlt = Math.max(cloudBaseAlt, zBase); 
                         isCloudCapped = true;
                         
-                        // On réajuste l'index visuel (le trait rouge) pour qu'il matche l'altitude du nuage
                         currentTopIdx = activeLevels.findIndex(l => l.z <= exactAlt);
                         if(currentTopIdx === -1) currentTopIdx = activeLevels.length - 1;
                     }
@@ -889,7 +873,6 @@
                 exactThermalTops.push({ alt: Math.round(exactAlt), cloud: isCloudCapped });
             }
 
-            // 2. AJOUT DE LA NOUVELLE LIGNE "PLAFOND (m)" AU DESSUS DE LA GRILLE
             const topRow = document.createElement('tr');
             const thTop = document.createElement('th');
             thTop.className = 'y-axis';
@@ -912,7 +895,6 @@
             });
             table.appendChild(topRow);
 
-            // Rendu des autres niveaux de la grille
             const visibleLevels = isCompactView
                 ? activeLevels.filter(level => compactModeRows.includes(level.alt) || level.isSurface)
                 : activeLevels;
@@ -989,7 +971,6 @@
                 table.appendChild(row);
             });
 
-            // Ligne de pluie
             const rainRow = document.createElement('tr');
             const thRain = document.createElement('th');
             thRain.className = 'y-axis';
@@ -1015,6 +996,7 @@
             setTimeout(centerTable, 0);
         }
 
+        // --- NOUVELLE FONCTION DE DESSIN DE L'ÉMAGRAMME ---
         function drawSondage(hourIndex, hourStr, autoScroll = true) {
             selectedHourIndex = hourIndex;
             chartSection.style.display = 'block';
@@ -1024,122 +1006,154 @@
             const activeHeader = document.getElementById(`hour-header-${hourIndex}`);
             if (activeHeader) activeHeader.classList.add('active');
 
-            // Inverser l'ordre des niveaux actifs pour le graphique (Sol en premier, puis de bas en haut)
             const reversedLevels = [...activeLevels].reverse();
-            const yLabels = reversedLevels.map(l => l.alt);
-            
             const levelDataArray = reversedLevels.map(l => getLevelData(l, hourIndex, globalWeatherData));
             
-            const originalTemperatures = levelDataArray.map(d => d.temp);
-            const originalDewpoints = levelDataArray.map(d => d.dew);
+            let envData = reversedLevels.map((level, i) => ({
+                z: level.z,
+                hpa: levelDataArray[i].hpa,
+                t: levelDataArray[i].temp,
+                td: levelDataArray[i].dew
+            }));
+
+            function getEnvAtZ(z) {
+                let l1 = [...envData].reverse().find(d => d.z <= z);
+                let l2 = envData.find(d => d.z >= z);
+                if (!l1) return l2 || envData[0];
+                if (!l2) return l1;
+                if (l1.z === l2.z) return l1;
+                let ratio = (z - l1.z) / (l2.z - l1.z);
+                return {
+                    z: z,
+                    hpa: l1.hpa + ratio * (l2.hpa - l1.hpa),
+                    t: l1.t + ratio * (l2.t - l1.t),
+                    td: l1.td + ratio * (l2.td - l1.td)
+                };
+            }
+
+            const zBase = globalElevation;
+            const tBase = globalWeatherData.temperature_2m[hourIndex];
+            const tdBase = globalWeatherData.dewpoint_2m[hourIndex];
+            const tParcelBase = (tBase !== undefined && tBase !== null) ? tBase + appConfig.parcelOffset : null;
+            
+            let cloudBaseAlt = zBase + Math.max(0, (tBase - tdBase) * 125);
+            let cloudZone = null; 
+            let parcelPath = [];
+            
+            // On déclare ceilingZ ici pour qu'il soit accessible au plugin du graphique
+            let ceilingZ = zBase; 
+
+            if (tParcelBase !== null) {
+                let pT = tParcelBase;
+                let maxZ = envData[envData.length - 1].z;
+                
+                parcelPath.push({ z: zBase, t: pT, hpa: getEnvAtZ(zBase).hpa });
+                
+                for (let currZ = zBase + 20; currZ <= maxZ; currZ += 20) {
+                    let isCloud = currZ >= cloudBaseAlt;
+                    let envAtZ = getEnvAtZ(currZ);
+                    let lapse;
+                    
+                    if (isCloud) {
+                        // Calcul dynamique du gradient pseudo-adiabatique humide
+                        const Tk = pT + 273.15; // Température en Kelvin
+                        const es = 6.112 * Math.exp((17.67 * pT) / (pT + 243.5)); // Pression de vapeur saturante
+                        const ws = 0.622 * es / (envAtZ.hpa - es); // Rapport de mélange
+                        const L = 2501000 - 2370 * pT; // Chaleur latente de vaporisation
+                        
+                        const num = 1 + (L * ws) / (287.05 * Tk);
+                        const den = 1 + (0.622 * L * L * ws) / (1004 * 287.05 * Tk * Tk);
+                        
+                        lapse = -(9.80665 / 1004) * (num / den); // Résultat exact en °C/m
+                    } else {
+                        lapse = -0.0098; // Gradient adiabatique sec
+                    }
+                    
+                    pT += lapse * 20;
+                    
+                    parcelPath.push({ z: currZ, t: pT, hpa: envAtZ.hpa });
+                    ceilingZ = currZ; 
+                    
+                    if (pT <= envAtZ.t) {
+                        break; 
+                    }
+                }
+
+                if (ceilingZ > cloudBaseAlt + 20) {
+                    cloudZone = [cloudBaseAlt, ceilingZ];
+                }
+            }
 
             const skew = appConfig.skewFactor;
-            
-            const skewedTemperatures = originalTemperatures.map((t, i) => {
-                if (t === null) return null;
-                const p = levelDataArray[i].hpa;
-                return skew === 0 ? t : t + (1000 - p) * skew;
-            });
+            function applySkew(t, hpa) {
+                if (t === null || hpa === null) return null;
+                return skew === 0 ? t : t + (1000 - hpa) * skew;
+            }
 
-            const skewedDewpoints = originalDewpoints.map((t, i) => {
-                if (t === null) return null;
-                const p = levelDataArray[i].hpa;
-                return skew === 0 ? t : t + (1000 - p) * skew;
-            });
-            
-            const tBase = globalWeatherData[`temperature_2m`][hourIndex];
-            const parcelBaseTempAtSite = (tBase !== undefined && tBase !== null) ? tBase + appConfig.parcelOffset : null;
-
-            const skewedParcelTemperatures = [];
-            let parcelReachedEnv = false;
-
-            reversedLevels.forEach((level, i) => {
-                const envTemp = originalTemperatures[i];
-                const p = levelDataArray[i].hpa;
-                const skewedEnvTemp = (envTemp === null || skew === 0) ? envTemp : envTemp + (1000 - p) * skew; 
-
-                if (parcelBaseTempAtSite === null || envTemp === null || envTemp === undefined) {
-                    skewedParcelTemperatures.push(null);
-                    return;
-                }
-
-                const dz = level.z - globalElevation;
-                const parcelTemp = parcelBaseTempAtSite - (dz / 100) * 0.98;
-                const skewedParcelTemp = skew === 0 ? parcelTemp : parcelTemp + (1000 - p) * skew; 
-
-                if (!parcelReachedEnv) {
-                    if (parcelTemp >= envTemp) {
-                        skewedParcelTemperatures.push(skewedParcelTemp);
-                    } else {
-                        // On pousse la valeur pour prolonger visuellement l'ascension jusqu'à l'intersection
-                        skewedParcelTemperatures.push(skewedParcelTemp);
-                        parcelReachedEnv = true;
-                    }
-                } else {
-                    skewedParcelTemperatures.push(null);
-                }
-            });
+            const envPoints = envData.map(d => ({ x: applySkew(d.t, d.hpa), y: d.z, t: d.t })).filter(d => d.x !== null);
+            const dewPoints = envData.map(d => ({ x: applySkew(d.td, d.hpa), y: d.z })).filter(d => d.x !== null);
+            const parcelChartPoints = parcelPath.map(p => ({ x: applySkew(p.t, p.hpa), y: p.z })).filter(d => d.x !== null);
 
             const ctx = document.getElementById('sondageChart').getContext('2d');
-
-            if (sondageChartInstance) {
-                sondageChartInstance.destroy();
-            }
+            if (sondageChartInstance) { sondageChartInstance.destroy(); }
 
             const datasets = [
                 {
                     label: 'Température (°C)',
-                    data: skewedTemperatures,
+                    data: envPoints,
                     borderColor: '#333',
                     backgroundColor: '#333',
+                    borderWidth: 2,
                     tension: 0,
-                    pointRadius: 0,
+                    pointRadius: 0, 
                     pointHitRadius: 10,
                     segment: {
                         borderColor: ctx => {
-                            if (ctx.p0DataIndex === undefined || ctx.p1DataIndex === undefined) return '#333';
+                            // On sécurise l'accès aux données interpolées par Chart.js
+                            if (!ctx.p0 || !ctx.p1 || !ctx.p0.parsed || !ctx.p1.parsed) return '#333';
                             
-                            const i0 = ctx.p0DataIndex; 
-                            const i1 = ctx.p1DataIndex; 
+                            const z0 = ctx.p0.parsed.y;
+                            const z1 = ctx.p1.parsed.y;
                             
-                            const z0 = reversedLevels[i0].z;
-                            const z1 = reversedLevels[i1].z;
+                            // On recalcule la température brute d'origine via notre fonction
+                            const env0 = getEnvAtZ(z0);
+                            const env1 = getEnvAtZ(z1);
                             
-                            const t0 = originalTemperatures[i0];
-                            const t1 = originalTemperatures[i1];
+                            if (!env0 || !env1 || env0.t === undefined || env1.t === undefined) return '#333';
 
-                            if (t0 === null || t1 === null) return '#333';
+                            const dz = z1 - z0;
+                            const dt = env0.t - env1.t;
+                            if (dz <= 0) return '#333';
 
-                            const dz = z1 - z0; 
-                            const dt = t0 - t1; 
-                            
-                            if(dz === 0) return '#333';
+                            // Calcul du gradient thermique (°C / 100m)
                             const lapseRate = (dt / dz) * 100;
-
+                            
                             if (lapseRate < appConfig.lapseGreen) return '#2ecc71'; 
                             if (lapseRate > appConfig.lapseRed) return '#e74c3c'; 
                             return '#000000'; 
                         }
                     }
+                },
+                {
+                    label: 'Parcelle (Sèche/Humide)',
+                    data: parcelChartPoints,
+                    borderColor: '#f39c12',
+                    backgroundColor: '#f39c12',
+                    borderWidth: 1,
+                    tension: 0,
+                    pointRadius: 0,
+                    borderDash: [5, 2],
+                    pointHitRadius: 10
                 }
             ];
-
-            datasets.push({
-                label: `Parcelle sèche (+${appConfig.parcelOffset}°C)`,
-                data: skewedParcelTemperatures,
-                borderColor: '#f39c12',
-                backgroundColor: '#f39c12',
-                tension: 0,
-                pointRadius: 0,
-                pointHitRadius: 10
-            });
 
             if (!isCompactView) {
                 datasets.push({
                     label: 'Pt Rosée (°C)',
-                    data: skewedDewpoints,
+                    data: dewPoints,
                     borderColor: '#3498db',
                     backgroundColor: '#3498db',
+                    borderWidth: 2,
                     tension: 0,
                     pointRadius: 0,
                     pointHitRadius: 10
@@ -1148,60 +1162,100 @@
 
             sondageChartInstance = new Chart(ctx, {
                 type: 'line',
-                data: {
-                    labels: yLabels, 
-                    datasets
-                },
+                data: { datasets },
                 options: {
-                    indexAxis: 'y', 
+                    indexAxis: 'y',
                     responsive: true,
-                    maintainAspectRatio: false, 
+                    maintainAspectRatio: false,
                     scales: {
                         x: {
+                            type: 'linear',
                             position: 'bottom',
-                            grid: { display: false },
+                            grid: { color: '#eee' },
                             ticks: { font: { size: 10 } }
                         },
                         y: {
-                            reverse: true,
-                            ticks: { font: { size: 10 } }
+                            type: 'linear',
+                            position: 'left',
+                            min: Math.floor(globalElevation / 500) * 500,
+                            ticks: {
+                                stepSize: 500,
+                                font: { size: 10 },
+                                callback: function(value) { return value + "m"; }
+                            }
                         }
                     },
                     plugins: {
-                        legend: {
-                            labels: { boxWidth: 12, font: { size: 11 } }
-                        },
+                        legend: { labels: { boxWidth: 12, font: { size: 11 } } },
                         tooltip: {
                             callbacks: {
                                 label: function(context) {
-                                    const index = context.dataIndex;
-                                    let realValue = null;
-                                    if (context.datasetIndex === 0) realValue = originalTemperatures[index];
-                                    if (context.datasetIndex === 2) realValue = originalDewpoints[index];
-                                    
-                                    if (context.datasetIndex === 1) {
-                                        if (context.raw === null) return `${context.dataset.label}: N/A`;
-                                        const p = levelDataArray[index].hpa;
-                                        const skew = appConfig.skewFactor;
-                                        realValue = skew === 0 ? context.raw : context.raw - (1000 - p) * skew;
-                                    }
-
-                                    return realValue !== null 
-                                        ? `${context.dataset.label}: ${realValue.toFixed(1)}°C`
-                                        : `${context.dataset.label}: N/A`;
+                                    const yVal = context.parsed.y;
+                                    let envAtZ = getEnvAtZ(yVal);
+                                    let rawTemp = context.parsed.x; 
+                                    const skew = appConfig.skewFactor;
+                                    const hpa = envAtZ.hpa;
+                                    const unskewed = skew === 0 ? rawTemp : rawTemp - (1000 - hpa) * skew;
+                                    return `${context.dataset.label}: ${unskewed.toFixed(1)}°C à ${Math.round(yVal)}m`;
                                 }
                             }
                         }
                     }
-                }
+                },
+                plugins: [
+                    {
+                        id: 'cloudZonePlugin',
+                        beforeDraw: (chart) => {
+                            const { ctx, chartArea, scales: { y } } = chart;
+                            if (!chartArea) return;
+
+                            // Vérifie si le thermique décolle vraiment (au moins 50m au-dessus du sol)
+                            let hasThermal = ceilingZ > zBase + 50;
+                            // Le plafond exploitable est le plus bas entre le sommet du thermique et la base du nuage
+                            let plafondAlt = Math.min(ceilingZ, cloudBaseAlt);
+
+                            // 1. Tracer la ligne du Plafond Thermique (uniquement s'il y a un thermique)
+                            if (hasThermal) {
+                                const yPlafond = y.getPixelForValue(plafondAlt);
+                                ctx.save();
+                                if (yPlafond >= chartArea.top && yPlafond <= chartArea.bottom) {
+                                    ctx.beginPath();
+                                    ctx.setLineDash([5, 5]);
+                                    ctx.moveTo(chartArea.left, yPlafond);
+                                    ctx.lineTo(chartArea.right, yPlafond);
+                                    ctx.strokeStyle = '#e74c3c'; // Ligne rouge comme dans le tableau
+                                    ctx.lineWidth = 1.5;
+                                    ctx.stroke();
+                                    
+                                    ctx.fillStyle = '#e74c3c';
+                                    ctx.font = 'bold 11px sans-serif';
+                                    ctx.fillText('Plafond', chartArea.left, yPlafond + 8);
+                                }
+                                ctx.restore();
+                            }
+
+                            // 2. Dessiner le nuage (zone grise) SI la particule dépasse le LCL
+                            if (cloudZone && cloudZone.length === 2) {
+                                const yBottom = y.getPixelForValue(cloudZone[0]); 
+                                const yTop = y.getPixelForValue(cloudZone[1]);    
+                                
+                                ctx.save();
+                                ctx.fillStyle = 'rgba(170, 180, 190, 0.4)';
+                                ctx.fillRect(chartArea.left, yTop, chartArea.right - chartArea.left, yBottom - yTop);
+                                
+                                ctx.fillStyle = '#444';
+                                ctx.font = 'bold 60px sans-serif';
+                                ctx.fillText('☁️', (chartArea.right - chartArea.left) / 2, yTop + Math.max(15, (yBottom - yTop)/2));
+                                ctx.restore();
+                            }
+                        }
+                    }
+                ]
             });
 
-            if (autoScroll) {
-                chartSection.scrollIntoView({ behavior: 'smooth', block: 'end' });
-            }
+            if (autoScroll) { chartSection.scrollIntoView({ behavior: 'smooth', block: 'end' }); }
         }
 
-        updateDateDisplay();
         fetchWeatherData();
     </script>
 </body>
