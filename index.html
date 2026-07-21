@@ -367,6 +367,8 @@
                 <div class="canvas-wrapper">
                     <canvas id="sondageChart"></canvas>
                 </div>
+                <!-- Nouvelle zone pour les infos du modèle -->
+                <div id="model-info" style="text-align: center; font-size: 11px; color: #7f8c8d; margin-top: 15px; padding-top: 10px; border-top: 1px solid #eee;"></div>
             </div>
         </div>
     </div>
@@ -388,6 +390,13 @@
         const configModal = document.getElementById('config-modal');
         const btnSave = document.getElementById('cfg-save');
         const btnCancel = document.getElementById('cfg-cancel');
+
+        function getRelativeHumidity(t, td) {
+            if (t === null || td === null || t === undefined || td === undefined) return 0;
+            const eT = 6.112 * Math.exp((17.67 * t) / (t + 243.5));
+            const eTd = 6.112 * Math.exp((17.67 * td) / (td + 243.5));
+            return (eTd / eT) * 100;
+        }
 
         function openConfig() {
             document.getElementById('cfg-wind-light').value = appConfig.windLight;
@@ -719,7 +728,7 @@
             chartSection.style.display = 'none';
 
             const dateStr = getApiDateString(currentDate);
-            const url = `https://api.open-meteo.com/v1/forecast?latitude=${currentLat}&longitude=${currentLon}&hourly=${windSpeedVars},${windDirVars},${tempVars},${dewVars},temperature_2m,dewpoint_2m,precipitation&models=${model}&start_date=${dateStr}&end_date=${dateStr}&timezone=Europe%2FParis`;
+            const url = `https://api.open-meteo.com/v1/forecast?latitude=${currentLat}&longitude=${currentLon}&hourly=${windSpeedVars},${windDirVars},${tempVars},${dewVars},temperature_2m,dewpoint_2m,precipitation,cloud_cover_low,cloud_cover_mid,cloud_cover_high&models=${model}&start_date=${dateStr}&end_date=${dateStr}&timezone=Europe%2FParis`;
             
             try {
                 const response = await fetch(url);
@@ -828,45 +837,71 @@
                     
                     let cloudBaseAlt = zBase + Math.max(0, (tBase - tdBase) * 125);
                     
-                    let prevZ = zBase;
-                    let prevTEnv = getLevelData(activeLevels[activeLevels.length - 1], i, hourlyData).temp;
-                    let prevTParcel = tParcelBase;
-                    
-                    for (let j = activeLevels.length - 1; j >= 0; j--) {
-                        let level = activeLevels[j];
-                        let data = getLevelData(level, i, hourlyData);
-                        let tEnv = data.temp;
+                    // 1. Préparer le profil de l'environnement pour cette heure spécifique
+                    const reversedLevels = [...activeLevels].reverse();
+                    const levelDataArray = reversedLevels.map(l => getLevelData(l, i, hourlyData));
+                    let envData = reversedLevels.map((level, idx) => ({
+                        z: level.z,
+                        hpa: levelDataArray[idx].hpa,
+                        t: levelDataArray[idx].temp
+                    }));
+
+                    function getEnvAtZForHour(z) {
+                        let l1 = [...envData].reverse().find(d => d.z <= z);
+                        let l2 = envData.find(d => d.z >= z);
+                        if (!l1) return l2 || envData[0];
+                        if (!l2) return l1;
+                        if (l1.z === l2.z) return l1;
+                        let ratio = (z - l1.z) / (l2.z - l1.z);
+                        return { 
+                            hpa: l1.hpa + ratio * (l2.hpa - l1.hpa), 
+                            t: l1.t + ratio * (l2.t - l1.t) 
+                        };
+                    }
+
+                    // 2. Simuler l'ascension de la particule exactement comme dans l'émagramme
+                    let pT = tParcelBase;
+                    let maxZ = envData[envData.length - 1].z;
+                    exactAlt = zBase;
+
+                    for (let currZ = zBase + 20; currZ <= maxZ; currZ += 20) {
+                        let isCloud = currZ >= cloudBaseAlt;
+                        let envAtZ = getEnvAtZForHour(currZ);
+                        let lapse;
                         
-                        if (tEnv === null || tEnv === undefined) break;
-                        
-                        let dz = level.z - zBase; 
-                        let tParcel = tParcelBase - (dz / 100) * 0.98; 
-                        
-                        if (tParcel >= tEnv) {
-                            currentTopIdx = j; 
-                            prevZ = level.z;
-                            prevTEnv = tEnv;
-                            prevTParcel = tParcel;
-                            exactAlt = level.z; 
+                        if (isCloud) {
+                            const Tk = pT + 273.15;
+                            const es = 6.112 * Math.exp((17.67 * pT) / (pT + 243.5));
+                            const ws = 0.622 * es / (envAtZ.hpa - es);
+                            const L = 2501000 - 2370 * pT;
+                            const num = 1 + (L * ws) / (287.05 * Tk);
+                            const den = 1 + (0.622 * L * L * ws) / (1004 * 287.05 * Tk * Tk);
+                            lapse = -(9.80665 / 1004) * (num / den);
                         } else {
-                            let deltaPrev = prevTParcel - prevTEnv; 
-                            let deltaCurr = tEnv - tParcel;         
-                            
-                            if (deltaPrev + deltaCurr > 0 && prevZ !== level.z) {
-                                let ratio = deltaPrev / (deltaPrev + deltaCurr);
-                                exactAlt = prevZ + ratio * (level.z - prevZ);
-                            }
+                            lapse = -0.0098;
+                        }
+                        
+                        pT += lapse * 20;
+                        
+                        // Entraînement (dilution de 1% tous les 20m)
+                        const entrainment = 0.01; 
+                        pT = pT * (1 - entrainment) + envAtZ.t * entrainment;
+
+                        exactAlt = currZ;
+                        
+                        if (pT <= envAtZ.t) {
                             break; 
                         }
                     }
 
+                    // 3. Bloquer le plafond exploitable à la base du nuage s'il y rentre
                     if (exactAlt > cloudBaseAlt) {
                         exactAlt = Math.max(cloudBaseAlt, zBase); 
                         isCloudCapped = true;
-                        
-                        currentTopIdx = activeLevels.findIndex(l => l.z <= exactAlt);
-                        if(currentTopIdx === -1) currentTopIdx = activeLevels.length - 1;
                     }
+                    
+                    currentTopIdx = activeLevels.findIndex(l => l.z <= exactAlt);
+                    if(currentTopIdx === -1) currentTopIdx = activeLevels.length - 1;
                 }
                 
                 thermalTops.push(currentTopIdx);
@@ -930,21 +965,26 @@
                     const dew = data.dew;
                     let isCloudy = false;
 
+                    // --- À remplacer dans renderGrid ---
                     if (temp !== null && dew !== null) {
-                        const spread = temp - dew;
-                        let denseThreshold = 1.5;
-                        let lightThreshold = 3.0;
+                        const rh = getRelativeHumidity(temp, dew);
+                        
+                        // Modèle empirique de couverture nuageuse basé sur l'HR
+                        // Si HR < 80% -> 0% de nuage
+                        // Si HR approche 100% -> couverture maximale
+                        let cloudCoverPercent = 0;
+                        if (rh >= 80) {
+                            cloudCoverPercent = (rh - 80) * 5; // Mise à l'échelle pour l'opacité visuelle
+                            if (cloudCoverPercent > 100) cloudCoverPercent = 100;
+                        }
 
-                        if (temp < -30) { denseThreshold = 5.0; lightThreshold = 8.0; } 
-                        else if (temp < -10) { denseThreshold = 3.0; lightThreshold = 5.0; } 
-                        else if (temp < 0) { denseThreshold = 2.0; lightThreshold = 4.0; }
-
-                        if (spread <= denseThreshold) {
-                            td.style.backgroundColor = 'rgba(170, 180, 190, 0.7)';
+                        if (cloudCoverPercent > 0) {
+                            // On utilise le pourcentage calculé pour gérer l'opacité du gris
+                            td.style.backgroundColor = `rgba(170, 180, 190, ${cloudCoverPercent / 100})`;
                             isCloudy = true;
-                        } else if (spread <= lightThreshold) {
-                            td.style.backgroundColor = 'rgba(170, 180, 190, 0.25)';
-                            isCloudy = true;
+                            if (cloudCoverPercent > 50) {
+                                td.style.color = 'white'; // Texte en blanc si le nuage est très dense
+                            }
                         } else {
                             td.style.backgroundColor = 'transparent';
                         }
@@ -970,6 +1010,39 @@
                 });
                 table.appendChild(row);
             });
+
+            // --- NOUVELLES LIGNES : COUVERTURE NUAGEUSE ---
+            // const cloudRows = [
+            //     { key: 'cloud_cover_low', label: '☁️ Bas (%)', data: hourlyData.cloud_cover_low },
+            //     { key: 'cloud_cover_mid', label: '☁️ Moy (%)', data: hourlyData.cloud_cover_mid },
+            //     { key: 'cloud_cover_high', label: '☁️ Hauts (%)', data: hourlyData.cloud_cover_high }
+            // ];
+
+            // cloudRows.forEach(cloudLayer => {
+            //     const tr = document.createElement('tr');
+            //     const th = document.createElement('th');
+            //     th.className = 'y-axis';
+            //     th.innerText = cloudLayer.label;
+            //     tr.appendChild(th);
+
+            //     visibleHourIndices.forEach(i => {
+            //         const td = document.createElement('td');
+            //         const val = cloudLayer.data ? cloudLayer.data[i] : 0;
+                    
+            //         if (val > 0) {
+            //             td.innerText = val;
+            //             td.style.fontSize = '11px';
+            //             td.style.fontWeight = 'bold';
+            //             td.style.backgroundColor = `rgba(170, 180, 190, ${val / 100})`;
+            //             if (val > 50) td.style.color = 'white';
+            //         } else {
+            //             td.innerText = '';
+            //         }
+            //         tr.appendChild(td);
+            //     });
+            //     table.appendChild(tr);
+            // });
+            // --- FIN DES LIGNES NUAGEUSES ---
 
             const rainRow = document.createElement('tr');
             const thRain = document.createElement('th');
@@ -1071,6 +1144,13 @@
                     
                     pT += lapse * 20;
                     
+                    // --- AJOUT DE L'ENTRAÎNEMENT (DILUTION DU THERMIQUE) ---
+                    // On intègre 1% d'air ambiant à la particule tous les 20m.
+                    // Cela détruit progressivement l'excédent de température (flottabilité).
+                    const entrainment = 0.01; 
+                    pT = pT * (1 - entrainment) + envAtZ.t * entrainment;
+                    // --------------------------------------------------------
+
                     parcelPath.push({ z: currZ, t: pT, hpa: envAtZ.hpa });
                     ceilingZ = currZ; 
                     
