@@ -192,6 +192,10 @@
         .hour-header { cursor: pointer; color: #2980b9; text-decoration: underline; transition: all 0.2s; position: static; z-index: 1; }
         .hour-header:hover { background-color: #e8f4f8; }
         .hour-header.active { background-color: #2980b9; color: white; text-decoration: none; }
+        
+        .hour-header.night-hour { background-color: #111; color: #ccc; }
+        .hour-header.night-hour:hover { background-color: #333; color: #fff; }
+        .hour-header.night-hour.active { background-color: #2980b9; color: white; }
 
         .y-axis { text-align: right; padding-right: 10px; white-space: nowrap; background-color: #f8f9fa; }
         .cell-content { display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 11px; font-weight: bold; text-shadow: 0px 0px 2px rgba(255,255,255,0.8); }
@@ -617,6 +621,7 @@
 
         let globalElevation = 0;
         let globalWeatherData = null;
+        let globalDailyData = null; // Nouvelle variable pour lever/coucher du soleil
         let sondageChartInstance = null;
         let currentDate = new Date(); 
         let activeLevels = []; 
@@ -741,7 +746,8 @@
             chartSection.style.display = 'none';
 
             const dateStr = getApiDateString(currentDate);
-            const url = `https://api.open-meteo.com/v1/forecast?latitude=${currentLat}&longitude=${currentLon}&hourly=${windSpeedVars},${windDirVars},${tempVars},${dewVars},temperature_2m,dewpoint_2m,precipitation,cloud_cover_low,cloud_cover_mid,cloud_cover_high&models=${model}&start_date=${dateStr}&end_date=${dateStr}&timezone=Europe%2FParis`;
+            // Ajout du paramètre &daily=sunrise,sunset
+            const url = `https://api.open-meteo.com/v1/forecast?latitude=${currentLat}&longitude=${currentLon}&hourly=${windSpeedVars},${windDirVars},${tempVars},${dewVars},temperature_2m,dewpoint_2m,precipitation,cloud_cover_low,cloud_cover_mid,cloud_cover_high&daily=sunrise,sunset&models=${model}&start_date=${dateStr}&end_date=${dateStr}&timezone=Europe%2FParis`;
             
             try {
                 const response = await fetch(url);
@@ -758,6 +764,7 @@
 
                 globalElevation = data.elevation || 0; 
                 globalWeatherData = data.hourly;
+                globalDailyData = data.daily; // Sauvegarde des données journalières
                 
                 updateActiveLevels();
                 
@@ -828,6 +835,19 @@
                 th.innerText = hourStr;
                 th.className = 'hour-header';
                 th.id = `hour-header-${i}`; 
+                
+                // --- Vérification Nuit / Jour ---
+                if (globalDailyData && globalDailyData.sunrise && globalDailyData.sunset) {
+                    const sunriseTime = new Date(globalDailyData.sunrise[0]).getTime();
+                    const sunsetTime = new Date(globalDailyData.sunset[0]).getTime();
+                    const hourTime = date.getTime();
+                    console.log(`Lever du soleil: ${globalDailyData.sunrise[0]}, Coucher du soleil: ${globalDailyData.sunset[0]}`);
+                    
+                    // Si l'heure est strictement avant le lever ou à partir du coucher du soleil
+                    if (hourTime < sunriseTime || hourTime >= sunsetTime) {
+                        th.classList.add('night-hour');
+                    }
+                }
                 
                 th.onclick = () => drawSondage(i, hourStr, true);
                 headerRow.appendChild(th);
