@@ -1177,18 +1177,27 @@
                 }
             }
 
+            // Calcul de la pression à la base du graphique pour aligner la grille et les données
+            const zBottom = Math.floor(globalElevation / 500) * 500;
+            const pBottom = getEnvAtZ(zBottom).hpa;
+
             const skew = appConfig.skewFactor;
             function applySkew(t, hpa) {
                 if (t === null || hpa === null) return null;
-                return skew === 0 ? t : t + (1000 - hpa) * skew;
+                return skew === 0 ? t : t + (pBottom - hpa) * skew;
             }
 
             const envPoints = envData.map(d => ({ x: applySkew(d.t, d.hpa), y: d.z, t: d.t })).filter(d => d.x !== null);
             const dewPoints = envData.map(d => ({ x: applySkew(d.td, d.hpa), y: d.z })).filter(d => d.x !== null);
             const parcelChartPoints = parcelPath.map(p => ({ x: applySkew(p.t, p.hpa), y: p.z })).filter(d => d.x !== null);
 
-            const ctx = document.getElementById('sondageChart').getContext('2d');
-            if (sondageChartInstance) { sondageChartInstance.destroy(); }
+            const canvas = document.getElementById('sondageChart');
+            // Force la destruction de tout graphique Chart.js attaché à ce canvas
+            const existingChart = Chart.getChart(canvas);
+            if (existingChart) {
+                existingChart.destroy();
+            }
+            const ctx = canvas.getContext('2d');
 
             const datasets = [
                 {
@@ -1267,7 +1276,7 @@
                         x: {
                             type: 'linear',
                             position: 'bottom',
-                            grid: { color: '#eee' },
+                            grid: { display: false },
                             ticks: { font: { size: 10 } }
                         },
                         y: {
@@ -1291,7 +1300,8 @@
                                     let rawTemp = context.parsed.x; 
                                     const skew = appConfig.skewFactor;
                                     const hpa = envAtZ.hpa;
-                                    const unskewed = skew === 0 ? rawTemp : rawTemp - (1000 - hpa) * skew;
+                                    // Utilisation de pBottom pour inverser la déformation proprement
+                                    const unskewed = skew === 0 ? rawTemp : rawTemp - (pBottom - hpa) * skew;
                                     return `${context.dataset.label}: ${unskewed.toFixed(1)}°C à ${Math.round(yVal)}m`;
                                 }
                             }
@@ -1302,8 +1312,45 @@
                     {
                         id: 'cloudZonePlugin',
                         beforeDraw: (chart) => {
-                            const { ctx, chartArea, scales: { y } } = chart;
+                            const { ctx, chartArea, scales: { x, y } } = chart; // Ajout du 'x' ici
                             if (!chartArea) return;
+
+                            // --- NOUVEAU : Dessiner la grille de température inclinée (Isothermes) ---
+                            const skew = appConfig.skewFactor;
+                            ctx.save();
+                            ctx.strokeStyle = '#eee'; // Couleur identique à la grille par défaut
+                            ctx.lineWidth = 1;
+                            
+                            const zBottom = y.min;
+                            const envBottom = getEnvAtZ(zBottom);
+                            const pBottom = envBottom.hpa;
+
+                            // On parcourt chaque "tick" (étiquette de l'axe X) pour tracer sa ligne
+                            x.ticks.forEach(tick => {
+                                const xTickValue = tick.value;
+                                ctx.beginPath();
+                                
+                                // On trace la ligne de bas en haut (tous les 200m pour suivre la courbe de pression)
+                                for (let z = zBottom; z <= y.max; z += 200) {
+                                    const envZ = getEnvAtZ(z);
+                                    // Décalage X proportionnel à la baisse de pression
+                                    const xVal = xTickValue + (pBottom - envZ.hpa) * skew;
+                                    const px = x.getPixelForValue(xVal);
+                                    const py = y.getPixelForValue(z);
+                                    
+                                    if (z === zBottom) ctx.moveTo(px, py);
+                                    else ctx.lineTo(px, py);
+                                }
+                                
+                                // Point final pour joindre exactement le plafond du graphique
+                                const envMax = getEnvAtZ(y.max);
+                                const xValMax = xTickValue + (pBottom - envMax.hpa) * skew;
+                                ctx.lineTo(x.getPixelForValue(xValMax), y.getPixelForValue(y.max));
+                                
+                                ctx.stroke();
+                            });
+                            ctx.restore();
+                            // --- FIN NOUVEAU ---
 
                             // Vérifie si le thermique décolle vraiment (au moins 50m au-dessus du sol)
                             let hasThermal = ceilingZ > zBase + 50;
