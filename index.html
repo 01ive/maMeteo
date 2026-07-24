@@ -323,9 +323,12 @@
                 <div class="config-row"><label>Très fort (<span style="color:#e74c3c;">Rouge</span>)</label><input type="number" id="cfg-wind-gale" step="1"></div>
             </div>
             <div class="config-section">
-                <strong>Émagramme</strong>
-                <div class="config-row"><label>Seuil instable bas (Vert)</label><input type="number" id="cfg-lapse-green" step="0.1"></div>
-                <div class="config-row"><label>Seuil instable haut (Rouge)</label><input type="number" id="cfg-lapse-red" step="0.1"></div>
+                <strong>Émagramme (°C / 100m)</strong>
+                <div class="config-row"><label>Seuil Vert (≥)</label><input type="number" id="cfg-lapse1" step="0.1"></div>
+                <div class="config-row"><label>Seuil Jaune (≥)</label><input type="number" id="cfg-lapse2" step="0.1"></div>
+                <div class="config-row"><label>Seuil Orange (≥)</label><input type="number" id="cfg-lapse3" step="0.1"></div>
+                <div class="config-row"><label>Seuil Rouge (≥)</label><input type="number" id="cfg-lapse4" step="0.1"></div>
+                <div class="config-row"><label>Seuil Violet (≥)</label><input type="number" id="cfg-lapse5" step="0.1"></div>
                 <div class="config-row"><label>SKEW_FACTOR</label><input type="number" id="cfg-skew" step="0.01"></div>
                 <div class="config-row"><label>Surchauffe particule (°C)</label><input type="number" id="cfg-offset" step="0.1"></div>
             </div>
@@ -375,15 +378,19 @@
 
     <script>
         // --- VARIABLES DE CONFIGURATION GLOBALES ---
+        // --- VARIABLES DE CONFIGURATION GLOBALES ---
         const appConfig = {
             windLight: 15,
             windMod: 30,
             windStrong: 50,
             windGale: 100,
-            lapseGreen: 0.6,
-            lapseRed: 0.9,
+            lapse1: 0.6,
+            lapse2: 0.8,
+            lapse3: 1.0,
+            lapse4: 1.2,
+            lapse5: 1.4,
             skewFactor: 0.08,
-            parcelOffset: 0.5
+            parcelOffset: 0.0
         };
 
         const configBtn = document.getElementById('config-btn');
@@ -403,8 +410,11 @@
             document.getElementById('cfg-wind-mod').value = appConfig.windMod;
             document.getElementById('cfg-wind-strong').value = appConfig.windStrong;
             document.getElementById('cfg-wind-gale').value = appConfig.windGale;
-            document.getElementById('cfg-lapse-green').value = appConfig.lapseGreen;
-            document.getElementById('cfg-lapse-red').value = appConfig.lapseRed;
+            document.getElementById('cfg-lapse1').value = appConfig.lapse1;
+            document.getElementById('cfg-lapse2').value = appConfig.lapse2;
+            document.getElementById('cfg-lapse3').value = appConfig.lapse3;
+            document.getElementById('cfg-lapse4').value = appConfig.lapse4;
+            document.getElementById('cfg-lapse5').value = appConfig.lapse5;
             document.getElementById('cfg-skew').value = appConfig.skewFactor;
             document.getElementById('cfg-offset').value = appConfig.parcelOffset;
             configModal.style.display = 'block';
@@ -417,8 +427,11 @@
             appConfig.windMod = parseFloat(document.getElementById('cfg-wind-mod').value);
             appConfig.windStrong = parseFloat(document.getElementById('cfg-wind-strong').value);
             appConfig.windGale = parseFloat(document.getElementById('cfg-wind-gale').value);
-            appConfig.lapseGreen = parseFloat(document.getElementById('cfg-lapse-green').value);
-            appConfig.lapseRed = parseFloat(document.getElementById('cfg-lapse-red').value);
+            appConfig.lapse1 = parseFloat(document.getElementById('cfg-lapse1').value);
+            appConfig.lapse2 = parseFloat(document.getElementById('cfg-lapse2').value);
+            appConfig.lapse3 = parseFloat(document.getElementById('cfg-lapse3').value);
+            appConfig.lapse4 = parseFloat(document.getElementById('cfg-lapse4').value);
+            appConfig.lapse5 = parseFloat(document.getElementById('cfg-lapse5').value);
             appConfig.skewFactor = parseFloat(document.getElementById('cfg-skew').value);
             appConfig.parcelOffset = parseFloat(document.getElementById('cfg-offset').value);
             
@@ -1208,9 +1221,12 @@
                             // Calcul du gradient thermique (°C / 100m)
                             const lapseRate = (dt / dz) * 100;
                             
-                            if (lapseRate < appConfig.lapseGreen) return '#2ecc71'; 
-                            if (lapseRate > appConfig.lapseRed) return '#e74c3c'; 
-                            return '#000000'; 
+                            if (lapseRate >= appConfig.lapse5) return '#9b59b6'; // Violet
+                            if (lapseRate >= appConfig.lapse4) return '#e74c3c'; // Rouge
+                            if (lapseRate >= appConfig.lapse3) return '#e67e22'; // Orange
+                            if (lapseRate >= appConfig.lapse2) return '#f1c40f'; // Jaune
+                            if (lapseRate >= appConfig.lapse1) return '#2ecc71'; // Vert
+                            return '#000000'; // Noir (< 0.6)
                         }
                     }
                 },
