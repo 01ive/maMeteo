@@ -441,7 +441,7 @@
         <div class="top-bar">
             <span style="display: flex; align-items: center; gap: 5px;">
                 <button id="config-btn" title="Configuration">⚙️</button>
-                <button id="toggle-view-btn">Mode simple</button>
+                <button id="toggle-view-btn">3h</button>
             </span>
             <h2>
                 <span id="location-name">Puy Mary</span>  
@@ -959,7 +959,7 @@
         toggleViewBtn.addEventListener('click', () => {
             isCompactView = !isCompactView;
             document.body.classList.toggle('compact-view', isCompactView);
-            toggleViewBtn.innerText = isCompactView ? 'Mode complet' : 'Mode simple';
+            toggleViewBtn.innerText = isCompactView ? '24h' : '3h';
             if (globalWeatherData) {
                 renderGrid(globalWeatherData);
             }
