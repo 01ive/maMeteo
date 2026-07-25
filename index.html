@@ -1456,7 +1456,14 @@
                 ]
             });
 
-            if (autoScroll) { chartSection.scrollIntoView({ behavior: 'smooth', block: 'end' }); }
+            if (autoScroll) { 
+                // On force le défilement uniquement à l'intérieur du panneau droit
+                const rightPanel = document.getElementById('right-panel');
+                rightPanel.scrollTo({ 
+                    top: rightPanel.scrollHeight, 
+                    behavior: 'smooth' 
+                }); 
+            }
         }
 
         fetchWeatherData();
