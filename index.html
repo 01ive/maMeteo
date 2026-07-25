@@ -31,10 +31,24 @@
         }
 
         #left-panel {
-            flex: 0 0 66.66%;
+            flex: 1 1 auto; /* Prend tout l'espace libre restant */
+            min-width: 0;
+            min-height: 0;
             height: 100%;
             position: relative;
             z-index: 1;
+        }
+
+        /* Style de la poignée de redimensionnement PC */
+        #resizer {
+            flex: 0 0 6px;
+            background-color: #ccc;
+            cursor: ew-resize; /* Curseur flèches horizontales */
+            z-index: 10;
+            transition: background-color 0.2s;
+        }
+        #resizer:hover, #resizer:active {
+            background-color: #2980b9;
         }
 
         #map { width: 100%; height: 100%; }
@@ -76,12 +90,12 @@
             overflow-x: hidden;
             padding: 20px;
             background-color: var(--bg-color);
-            border-left: 2px solid #ccc;
+            /* border-left supprimé car le resizer joue le rôle de bordure */
             box-shadow: -4px 0 10px rgba(0,0,0,0.05);
-            display: flex;
+            /* display: flex;
             flex-direction: column;
             align-items: center;
-            position: relative; 
+            position: relative;  */
         }
 
         .top-bar {
@@ -312,10 +326,19 @@
 
         @media (max-width: 768px) {
             body { flex-direction: column; }
-            #left-panel { flex: 0 0 45vh; width: 100%; height: 45vh; }
+            #left-panel { flex: 1 1 auto; width: 100%; height: auto; min-height: 0; }
+            
+            /* Le resizer devient horizontal et prend la couleur bleue de l'ancienne bordure */
+            #resizer { 
+                flex: 0 0 6px; 
+                width: 100%; 
+                cursor: ns-resize; /* Curseur flèches verticales */
+                background-color: #2980b9; 
+            }
+
             #search-box { top: 10px; left: 50px; right: 10px; width: calc(100% - 60px); }
             #search-input { width: 100%; }
-            #right-panel { flex: 0 0 55vh; width: 100%; height: 55vh; border-left: none; border-top: 3px solid #2980b9; padding: 10px; }
+            #right-panel { flex: 0 0 55vh; width: 100%; height: auto; border-left: none; border-top: none; padding: 10px; }
             .top-bar h2 { font-size: 1.2rem; }
             select, .date-controls button, #toggle-view-btn { padding: 10px; }
             #config-modal { width: 90%; left: 5%; top: 50vh; transform: translateY(-50%); position: fixed; }
@@ -372,6 +395,9 @@
     </div>
 
     <div id="pioupiou-widget-container"></div>
+
+    <!-- NOUVEAU : La barre de redimensionnement -->
+    <div id="resizer" title="Redimensionner le volet"></div>
 
     <div id="right-panel">
         <div class="top-bar">
@@ -1539,6 +1565,64 @@
                 }); 
             }
         }
+
+        // --- LOGIQUE DE REDIMENSIONNEMENT (RESIZER) ---
+        const resizer = document.getElementById('resizer');
+        const rightPanel = document.getElementById('right-panel');
+        let isResizing = false;
+
+        function startResize(e) {
+            isResizing = true;
+            document.body.style.cursor = window.innerWidth > 768 ? 'ew-resize' : 'ns-resize';
+            // On désactive l'interaction avec la carte pour éviter que Leaflet ne capture le mouvement
+            document.getElementById('map').style.pointerEvents = 'none';
+            if (e.type === 'mousedown') e.preventDefault(); 
+        }
+
+        function stopResize() {
+            if (isResizing) {
+                isResizing = false;
+                document.body.style.cursor = '';
+                document.getElementById('map').style.pointerEvents = 'auto';
+                map.invalidateSize(); // Demande à Leaflet de recalculer l'affichage de la carte
+            }
+        }
+
+        function resize(e) {
+            if (!isResizing) return;
+            
+            // Compatibilité souris et tactile (téléphone)
+            const clientX = e.type.includes('mouse') ? e.clientX : e.touches[0].clientX;
+            const clientY = e.type.includes('mouse') ? e.clientY : e.touches[0].clientY;
+
+            if (window.innerWidth > 768) {
+                // --- Mode PC : redimensionnement de la largeur ---
+                const newWidth = window.innerWidth - clientX;
+                // Blocage des dimensions extrêmes (mini 300px, max 80% de l'écran)
+                if (newWidth > 300 && newWidth < window.innerWidth * 0.8) {
+                    rightPanel.style.flex = `0 0 ${newWidth}px`;
+                }
+            } else {
+                // --- Mode Mobile : redimensionnement de la hauteur ---
+                const newHeight = window.innerHeight - clientY;
+                // Blocage des dimensions extrêmes (mini 200px, max 80% de l'écran)
+                if (newHeight > 200 && newHeight < window.innerHeight * 0.8) {
+                    rightPanel.style.flex = `0 0 ${newHeight}px`;
+                }
+            }
+        }
+
+        // Écouteurs d'événements pour lancer le drag
+        resizer.addEventListener('mousedown', startResize);
+        resizer.addEventListener('touchstart', startResize, { passive: false });
+
+        // Écouteurs pour le suivi du mouvement (sur toute la fenêtre pour ne pas perdre le clic)
+        window.addEventListener('mousemove', resize);
+        window.addEventListener('touchmove', resize, { passive: true });
+
+        // Écouteurs pour stopper le drag
+        window.addEventListener('mouseup', stopResize);
+        window.addEventListener('touchend', stopResize);
 
         fetchWeatherData();
     </script>
