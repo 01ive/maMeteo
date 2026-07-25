@@ -274,6 +274,25 @@
         .btn-save { background-color: #2980b9; color: white; }
         .btn-cancel { background-color: #eee; color: #333; }
 
+        /* --- Styles spécifiques au Mode Simple sur Bureau --- */
+        body.compact-view .grid-chart-layout {
+            flex-direction: row;
+            flex-wrap: nowrap;
+            align-items: flex-start;
+            width: 100%; /* S'assure d'utiliser toute la largeur du volet de droite */
+        }
+        
+        body.compact-view .grid-container {
+            flex: 0 0 auto;     /* Le tableau garde sa taille naturelle */
+            width: max-content; /* Le conteneur épouse strictement les colonnes */
+        }
+        
+        body.compact-view .chart-container {
+            flex: 1;            /* Demande au conteneur de prendre TOUT l'espace restant */
+            min-width: 0;       
+            overflow: hidden;   /* Crucial : force Chart.js à écouter les limites de ce conteneur */
+        }
+
         @media (max-width: 768px) {
             body { flex-direction: column; }
             #left-panel { flex: 0 0 45vh; width: 100%; height: 45vh; }
@@ -284,9 +303,25 @@
             select, .date-controls button, #toggle-view-btn { padding: 10px; }
             #config-modal { width: 90%; left: 5%; top: 50vh; transform: translateY(-50%); position: fixed; }
             #pioupiou-widget-container { left: 50% !important; transform: translateX(-50%); top: 5px !important; height: 95vh; min-width: 80vw !important; max-height: 90vh !important; z-index: 2000; }
-            .compact-view .grid-chart-layout { flex-direction: column; }
-            .compact-view .grid-chart-layout .chart-container,
-            .compact-view .grid-chart-layout .grid-container { max-width: 100%; flex: none; }
+            /* --- Mode simple sur Mobile : Côte à côte --- */
+            body.compact-view .grid-chart-layout { 
+                flex-direction: row; 
+                flex-wrap: nowrap; 
+            }
+            body.compact-view .grid-container { 
+                width: max-content; 
+                flex: 0 0 auto; 
+            }
+            body.compact-view .chart-container { 
+                flex: 1; 
+                min-width: 0; 
+                padding: 10px 5px; /* Réduction des marges internes pour gagner de la place */
+            }
+            /* Réduction du titre du graphique pour aérer l'affichage mobile */
+            body.compact-view #chart-title { 
+                font-size: 13px; 
+                margin-bottom: 5px; 
+            }
         }
     </style>
 </head>
