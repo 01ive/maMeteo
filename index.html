@@ -303,10 +303,11 @@
             select, .date-controls button, #toggle-view-btn { padding: 10px; }
             #config-modal { width: 90%; left: 5%; top: 50vh; transform: translateY(-50%); position: fixed; }
             #pioupiou-widget-container { left: 50% !important; transform: translateX(-50%); top: 5px !important; height: 95vh; min-width: 80vw !important; max-height: 90vh !important; z-index: 2000; }
-            /* --- Mode simple sur Mobile : Côte à côte --- */
+            /* --- Mode simple sur Mobile : Hauteur synchronisée stricte --- */
             body.compact-view .grid-chart-layout { 
                 flex-direction: row; 
                 flex-wrap: nowrap; 
+                align-items: stretch; /* Étire le conteneur du graphique à la hauteur du tableau */
             }
             body.compact-view .grid-container { 
                 width: max-content; 
@@ -315,12 +316,29 @@
             body.compact-view .chart-container { 
                 flex: 1; 
                 min-width: 0; 
-                padding: 10px 5px; /* Réduction des marges internes pour gagner de la place */
+                padding: 10px 5px; 
+                position: relative; /* Devient le point de repère pour le graphique absolu */
+                display: block;     /* On annule flexbox à l'intérieur pour éviter les conflits */
+            }
+            body.compact-view #chart-title { 
+                font-size: 13px; 
+                margin: 0 0 10px 0; 
+                height: 15px;       /* Hauteur fixe pour le titre */
+            }
+            body.compact-view .canvas-wrapper {
+                position: absolute;
+                top: 35px;          /* S'accroche juste en dessous du titre */
+                bottom: 10px;       /* S'accroche en bas du conteneur étiré */
+                left: 5px;
+                right: 5px;
+                height: auto !important; /* Force l'annulation des 450px par défaut */
+                width: auto !important;
             }
             /* Réduction du titre du graphique pour aérer l'affichage mobile */
             body.compact-view #chart-title { 
                 font-size: 13px; 
                 margin-bottom: 5px; 
+                flex: 0 0 auto;
             }
         }
     </style>
@@ -1038,9 +1056,10 @@
             });
             table.appendChild(topRow);
 
-            const visibleLevels = isCompactView
-                ? activeLevels.filter(level => compactModeRows.includes(level.alt) || level.isSurface)
-                : activeLevels;
+            // const visibleLevels = isCompactView
+            //     ? activeLevels.filter(level => compactModeRows.includes(level.alt) || level.isSurface)
+            //     : activeLevels;
+            const visibleLevels = activeLevels;
 
             visibleLevels.forEach(level => {
                 const row = document.createElement('tr');
