@@ -387,7 +387,7 @@
 
             #search-box { top: 10px; left: 50px; right: 10px; width: calc(100% - 60px); }
             #search-input { width: 100%; }
-            #right-panel { flex: 0 0 55vh; width: 100%; min-height: 0; overflow-y: auto; border-left: none; border-top: none; padding: 10px; }
+            #right-panel { flex: 0 0 55vh; width: 100%; min-height: 0; overflow-y: auto; border-left: none; border-top: none; padding: 10px 10px calc(20px + env(safe-area-inset-bottom, 20px)) 10px; }
             .top-bar h2 { font-size: 1.2rem; }
             select, .date-controls button, #toggle-view-btn { padding: 10px; }
             #config-modal { width: 90%; left: 5%; top: 50vh; transform: translateY(-50%); position: fixed; }
