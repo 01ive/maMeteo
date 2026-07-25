@@ -734,25 +734,24 @@
 
                         const marker = L.marker([lat, lon], { icon: pioupiouIcon }).addTo(pioupiouLayer);
 
-                        marker.on('mouseover', function(e) {
-                            this.bindPopup(`
-                                <div style="text-align: center; font-family: sans-serif; line-height: 1.4;">
-                                    <strong style="font-size: 14px; color: #2980b9;">${name}</strong><br>
-                                    <div style="font-size: 12px; margin-top: 5px;">
-                                        Vent : <span class="${colorClass}"><b>${speed} km/h</b></span> (${cardinal})<br>
-                                        <div style="display: flex; justify-content: space-between; gap: 10px; font-size: 11px; color: #555; margin-top: 5px;">
-                                            <span>Min: ${min}</span>
-                                            <span>Max: ${max}</span>
-                                        </div>
+                        // Définition de la popup standard
+                        const popupContent = `
+                            <div style="text-align: center; font-family: sans-serif; line-height: 1.4;">
+                                <strong style="font-size: 14px; color: #2980b9;">${name}</strong><br>
+                                <div style="font-size: 12px; margin-top: 5px;">
+                                    Vent : <span class="${colorClass}"><b>${speed} km/h</b></span> (${cardinal})<br>
+                                    <div style="display: flex; justify-content: space-between; gap: 10px; font-size: 11px; color: #555; margin-top: 5px;">
+                                        <span>Min: ${min}</span>
+                                        <span>Max: ${max}</span>
                                     </div>
                                 </div>
-                            `).openPopup();
-                        });
+                            </div>
+                        `;
+                        marker.bindPopup(popupContent);
 
-                        marker.on('mouseout', function(e) { this.closePopup(); });
-                        marker.on('click', function(e) {
+                        function openPioupiouWidget(stationId) {
                             const container = document.getElementById('pioupiou-widget-container');
-                            const widgetId = `PP${station.id}`; 
+                            const widgetId = `PP${stationId}`; 
                             container.style.display = 'block';
                             container.innerHTML = `
                                 <div style="padding: 5px; text-align: right; background: #f8f8f8;">
@@ -764,7 +763,35 @@
                             script.src = "https://www.openwindmap.org/js/widget-v1.js";
                             script.async = true;
                             document.body.appendChild(script);
-                        });
+                        }
+
+                        // Sur PC : comportement classique au survol/clic si besoin, ou on garde le clic pour le widget
+                        // Sur PC : comportement d'origine (survol = popup, clic = widget)
+                        if (window.innerWidth > 768) {
+                            marker.on('mouseover', function(e) { this.openPopup(); });
+                            marker.on('mouseout', function(e) { this.closePopup(); });
+                            marker.on('click', function(e) {
+                                openPioupiouWidget(station.id);
+                            });
+                        } else {
+                            // --- SUR MOBILE UNIQUEMENT : Simple clic = Popup, Double Tap = Widget ---
+                            let lastClickTime = 0;
+
+                            marker.on('click', function(e) {
+                                const currentTime = new Date().getTime();
+                                const tapLength = currentTime - lastClickTime;
+
+                                if (tapLength < 300 && tapLength > 0) {
+                                    // Double tap : ferme la popup et ouvre le widget Pioupiou
+                                    this.closePopup();
+                                    openPioupiouWidget(station.id);
+                                    lastClickTime = 0;
+                                } else {
+                                    // Simple clic : laisse Leaflet ouvrir la popup
+                                    lastClickTime = currentTime;
+                                }
+                            });
+                        }
                     });
                 }
             } catch (error) { console.error("Erreur lors du chargement des balises Pioupiou :", error); }
