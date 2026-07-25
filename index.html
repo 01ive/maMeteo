@@ -219,11 +219,27 @@
         
         .hour-header { cursor: pointer; color: #2980b9; text-decoration: underline; transition: all 0.2s; position: static; z-index: 1; }
         .hour-header:hover { background-color: #e8f4f8; }
-        .hour-header.active { background-color: #2980b9; color: white; text-decoration: none; }
+        .hour-header.active { 
+            background-color: #2980b9; color: white; text-decoration: none; 
+            border-top: 1px solid #333 !important; border-left: 1px solid #333 !important; border-right: 1px solid #333 !important;
+        }
         
         .hour-header.night-hour { background-color: #111; color: #ccc; }
         .hour-header.night-hour:hover { background-color: #333; color: #fff; }
-        .hour-header.night-hour.active { background-color: #2980b9; color: white; }
+        .hour-header.night-hour.active { 
+            background-color: #2980b9; color: white; 
+            border-top: 1px solid #333 !important; border-left: 1px solid #333 !important; border-right: 1px solid #333 !important;
+        }
+
+        /* --- Bordures pour le corps de la colonne sélectionnée --- */
+        td.active-col {
+            border-left: 1px solid #333 !important;
+            border-right: 1px solid #333 !important;
+        }
+        /* Ferme le cadre sur la toute dernière ligne du tableau */
+        tr:last-child td.active-col {
+            border-bottom: 1px solid #333 !important;
+        }
 
         .y-axis { text-align: right; padding-right: 10px; white-space: nowrap; background-color: #f8f9fa; }
         .cell-content { display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 11px; font-weight: bold; text-shadow: 0px 0px 2px rgba(255,255,255,0.8); }
@@ -1108,6 +1124,7 @@
 
             visibleHourIndices.forEach(i => {
                 const td = document.createElement('td');
+                td.dataset.hour = i;
                 const ceilData = exactThermalTops[i];
                 
                 if (ceilData.alt > globalElevation + 50) {
@@ -1143,6 +1160,7 @@
 
                 visibleHourIndices.forEach(i => {
                     const td = document.createElement('td');
+                    td.dataset.hour = i;
                     const data = getLevelData(level, i, hourlyData);
                     
                     if (data.windSpeed === null || data.windSpeed === undefined) {
@@ -1244,6 +1262,7 @@
 
             visibleHourIndices.forEach(i => {
                 const td = document.createElement('td');
+                td.dataset.hour = i;
                 const precip = hourlyData.precipitation ? hourlyData.precipitation[i] : 0;
                 if (precip > 0) td.innerHTML = `<div style="color: #3498db; font-weight: bold; font-size: 12px;">${precip}</div>`;
                 else td.innerHTML = "";
@@ -1270,6 +1289,10 @@
             document.querySelectorAll('.hour-header').forEach(el => el.classList.remove('active'));
             const activeHeader = document.getElementById(`hour-header-${hourIndex}`);
             if (activeHeader) activeHeader.classList.add('active');
+
+            // --- NOUVEAU : Encadrement visuel de la colonne ---
+            document.querySelectorAll('#wind-grid td.active-col').forEach(el => el.classList.remove('active-col'));
+            document.querySelectorAll(`#wind-grid td[data-hour="${hourIndex}"]`).forEach(el => el.classList.add('active-col'));
 
             const reversedLevels = [...activeLevels].reverse();
             const levelDataArray = reversedLevels.map(l => getLevelData(l, hourIndex, globalWeatherData));
