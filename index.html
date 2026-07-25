@@ -1352,8 +1352,12 @@
                             return '#000000'; // Noir (< 0.6)
                         }
                     }
-                },
-                {
+                }
+            ];
+
+            if (!isCompactView) {
+                // On ajoute la Parcelle uniquement en mode complet
+                datasets.push({
                     label: 'Parcelle (Sèche/Humide)',
                     data: parcelChartPoints,
                     borderColor: '#f39c12',
@@ -1363,10 +1367,9 @@
                     pointRadius: 0,
                     borderDash: [5, 2],
                     pointHitRadius: 10
-                }
-            ];
+                });
 
-            if (!isCompactView) {
+                // On ajoute le Point de Rosée uniquement en mode complet
                 datasets.push({
                     label: 'Pt Rosée (°C)',
                     data: dewPoints,
