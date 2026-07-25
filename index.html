@@ -74,9 +74,10 @@
             top: 10px;
             left: 50px; 
             z-index: 1000;
-            background: white;
+            background: rgba(255, 255, 255, 0.85); 
+            /* backdrop-filter: blur(8px);  */
+            box-shadow: 0px 0px 4px rgba(0, 0, 0, 0.5);
             border-radius: 4px;
-            box-shadow: 0 1px 5px rgba(0,0,0,0.65);
             display: flex;
             align-items: center;
             overflow: hidden;
@@ -107,11 +108,7 @@
             padding: 20px;
             background-color: var(--bg-color);
             /* border-left supprimé car le resizer joue le rôle de bordure */
-            box-shadow: -4px 0 10px rgba(0,0,0,0.05);
-            /* display: flex;
-            flex-direction: column;
-            align-items: center;
-            position: relative;  */
+            box-shadow: 0 8px 24px rgba(149, 157, 165, 0.15);
         }
 
         .top-bar {
@@ -150,6 +147,7 @@
             color: #2980b9;
             font-weight: bold;
             transition: all 0.2s;
+            box-shadow: 0 0px 2px rgba(0,0,0,0.5);
         }
         #toggle-view-btn:hover { background-color: #e8f4f8; border-color: #2980b9; }
 
@@ -213,8 +211,8 @@
         .grid-container::-webkit-scrollbar-thumb { background: #c1c1c1; border-radius: 4px; }
         .grid-container::-webkit-scrollbar-thumb:hover { background: #a8a8a8; }
 
-        table { border-collapse: collapse; text-align: center; table-layout: fixed; width: auto; margin: 0 auto; }
-        th, td { border: 1px solid var(--border-color); padding: 4px; width: 40px; min-width: 40px; height: 40px; transition: background-color 0.3s; }
+        table { font-variant-numeric: tabular-nums; border-collapse: collapse; text-align: center; table-layout: fixed; width: auto; margin: 0 auto; }
+        th, td { border: 0px solid var(--border-color); padding: 2px; width: 40px; min-width: 40px; height: 40px; transition: background-color 0.3s; }
         th { background-color: #f8f9fa; font-weight: 600; font-size: 12px; position: sticky; left: 0; z-index: 2; }
 
         .chart-container { background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); display: none; min-width: 260px; }
@@ -465,7 +463,7 @@
 
         <div class="header">
             <label for="model-select" style="font-size: 13px;">Modèle Météo :</label>
-            <select id="model-select">
+            <select id="model-select" style="box-shadow: 0 0px 2px rgba(0,0,0,0.5);">
                 <option value="best_match">Meilleure correspondance</option>
                 <option value="arome_france">AROME (Météo-France)</option>
                 <option value="meteofrance_arpege_europe">ARPEGE (Météo-France)</option>
@@ -475,9 +473,9 @@
             </select>
 
             <div class="date-controls">
-                <button id="btn-prev">◀</button>
+                <button id="btn-prev" style="box-shadow: 0 0px 2px rgba(0,0,0,0.5);">◀</button>
                 <h3 id="current-date-display">Date</h3>
-                <button id="btn-next">▶</button>
+                <button id="btn-next" style="box-shadow: 0 0px 2px rgba(0,0,0,0.5);">▶</button>
             </div>
             <div id="loading">Chargement des données...</div>
         </div>
