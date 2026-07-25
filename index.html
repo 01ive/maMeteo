@@ -551,6 +551,22 @@
         const btnSave = document.getElementById('cfg-save');
         const btnCancel = document.getElementById('cfg-cancel');
 
+        function openPioupiouWidget(stationId) {
+            const container = document.getElementById('pioupiou-widget-container');
+            const widgetId = `PP${stationId}`; 
+            container.style.display = 'block';
+            container.innerHTML = `
+                <div style="padding: 5px; text-align: right; background: #f8f8f8;">
+                    <button onclick="document.getElementById('pioupiou-widget-container').style.display='none'" style="cursor:pointer;">✕</button>
+                </div>
+                <div class="owm-widget" data-id="${widgetId}" data-show-live="yes" data-show-2h="yes" data-show-24h="no"></div>
+            `;
+            const script = document.createElement('script');
+            script.src = "https://www.openwindmap.org/js/widget-v1.js";
+            script.async = true;
+            document.body.appendChild(script);
+        }
+
         function getRelativeHumidity(t, td) {
             if (t === null || td === null || t === undefined || td === undefined) return 0;
             const eT = 6.112 * Math.exp((17.67 * t) / (t + 243.5));
@@ -735,9 +751,10 @@
                         const marker = L.marker([lat, lon], { icon: pioupiouIcon }).addTo(pioupiouLayer);
 
                         // Définition de la popup standard
+                        // Construction du contenu de la popup avec le nom cliquable
                         const popupContent = `
                             <div style="text-align: center; font-family: sans-serif; line-height: 1.4;">
-                                <strong style="font-size: 14px; color: #2980b9;">${name}</strong><br>
+                                <strong style="font-size: 14px; color: #2980b9; cursor: pointer; text-decoration: underline;" onclick="openPioupiouWidget(${station.id})">${name}</strong><br>
                                 <div style="font-size: 12px; margin-top: 5px;">
                                     Vent : <span class="${colorClass}"><b>${speed} km/h</b></span> (${cardinal})<br>
                                     <div style="display: flex; justify-content: space-between; gap: 10px; font-size: 11px; color: #555; margin-top: 5px;">
@@ -747,49 +764,21 @@
                                 </div>
                             </div>
                         `;
+
                         marker.bindPopup(popupContent);
 
-                        function openPioupiouWidget(stationId) {
-                            const container = document.getElementById('pioupiou-widget-container');
-                            const widgetId = `PP${stationId}`; 
-                            container.style.display = 'block';
-                            container.innerHTML = `
-                                <div style="padding: 5px; text-align: right; background: #f8f8f8;">
-                                    <button onclick="document.getElementById('pioupiou-widget-container').style.display='none'" style="cursor:pointer;">✕</button>
-                                </div>
-                                <div class="owm-widget" data-id="${widgetId}" data-show-live="yes" data-show-2h="yes" data-show-24h="no"></div>
-                            `;
-                            const script = document.createElement('script');
-                            script.src = "https://www.openwindmap.org/js/widget-v1.js";
-                            script.async = true;
-                            document.body.appendChild(script);
-                        }
-
-                        // Sur PC : comportement classique au survol/clic si besoin, ou on garde le clic pour le widget
-                        // Sur PC : comportement d'origine (survol = popup, clic = widget)
+                        // Gestion unifiée PC et Mobile :
+                        // Sur PC -> mouseover ouvre, mouseout ne ferme plus pour que la popup reste accrochée
+                        // Sur Mobile -> click ouvre, et un clic ailleurs (ou sur une autre) gère la fermeture
                         if (window.innerWidth > 768) {
-                            marker.on('mouseover', function(e) { this.openPopup(); });
-                            marker.on('mouseout', function(e) { this.closePopup(); });
-                            marker.on('click', function(e) {
-                                openPioupiouWidget(station.id);
+                            marker.on('mouseover', function(e) {
+                                this.openPopup();
                             });
+                            // Note : on retire le mouseout pour que la popup reste affichée 
+                            // jusqu'à ce que la souris passe sur un autre marqueur.
                         } else {
-                            // --- SUR MOBILE UNIQUEMENT : Simple clic = Popup, Double Tap = Widget ---
-                            let lastClickTime = 0;
-
                             marker.on('click', function(e) {
-                                const currentTime = new Date().getTime();
-                                const tapLength = currentTime - lastClickTime;
-
-                                if (tapLength < 300 && tapLength > 0) {
-                                    // Double tap : ferme la popup et ouvre le widget Pioupiou
-                                    this.closePopup();
-                                    openPioupiouWidget(station.id);
-                                    lastClickTime = 0;
-                                } else {
-                                    // Simple clic : laisse Leaflet ouvrir la popup
-                                    lastClickTime = currentTime;
-                                }
+                                this.openPopup();
                             });
                         }
                     });
