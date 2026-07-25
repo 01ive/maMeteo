@@ -58,7 +58,7 @@
             width: 220px;
             font-size: 13px;
         }
-        #search-btn {
+        #search-btn, #geoloc-btn {
             background: #fff;
             border: none;
             padding: 8px 12px;
@@ -67,7 +67,7 @@
             font-size: 14px;
             transition: background 0.2s;
         }
-        #search-btn:hover { background: #f4f4f9; }
+        #search-btn:hover, #geoloc-btn:hover { background: #f4f4f9; }
 
         #right-panel {
             flex: 0 0 33.33%;
@@ -296,6 +296,7 @@
         <div id="search-box">
             <input type="text" id="search-input" placeholder="Rechercher un lieu (ville, sommet...)" />
             <button id="search-btn" title="Rechercher">🔍</button>
+            <button id="geoloc-btn" title="Me géolocaliser">📍</button>
         </div>
         <div id="map"></div>
     </div>
@@ -501,6 +502,45 @@
 
         searchBtn.addEventListener('click', performSearch);
         searchInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') performSearch(); });
+
+        const geolocBtn = document.getElementById('geoloc-btn');
+
+        geolocBtn.addEventListener('click', () => {
+            if (!navigator.geolocation) {
+                alert("La géolocalisation n'est pas supportée par votre navigateur.");
+                return;
+            }
+            
+            const originalText = geolocBtn.innerText;
+            geolocBtn.innerText = "⏳";
+            
+            navigator.geolocation.getCurrentPosition(async (position) => {
+                currentLat = position.coords.latitude;
+                currentLon = position.coords.longitude;
+                
+                map.setView([currentLat, currentLon], 11);
+                marker.setLatLng([currentLat, currentLon]);
+                
+                document.getElementById('coords-display').innerText = `${currentLat.toFixed(3)}°N, ${currentLon.toFixed(3)}°E`;
+                document.getElementById('location-name').innerText = "Recherche...";
+                
+                try {
+                    const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${currentLat}&lon=${currentLon}&zoom=10`);
+                    const data = await response.json();
+                    const placeName = data.address.city || data.address.town || data.address.village || data.address.municipality || data.name || "Position géolocalisée";
+                    document.getElementById('location-name').innerText = placeName;
+                } catch (error) {
+                    document.getElementById('location-name').innerText = "Position géolocalisée";
+                }
+                
+                fetchWeatherData();
+                geolocBtn.innerText = originalText;
+            }, (error) => {
+                console.error("Erreur Géoloc :", error);
+                alert("Impossible de récupérer votre position. Vérifiez les permissions de votre navigateur.");
+                geolocBtn.innerText = originalText;
+            });
+        });
 
         let pioupiouLayer = L.layerGroup().addTo(map);
 
