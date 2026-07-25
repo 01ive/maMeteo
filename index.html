@@ -156,7 +156,21 @@
             width: 100%;
         }
 
-        .header { text-align: center; margin-bottom: 20px; position: relative; }
+        .header { 
+            display: flex; 
+            justify-content: center; 
+            align-items: center; 
+            gap: 20px; 
+            flex-wrap: wrap; /* Permet de passer à la ligne sur les très petits écrans */
+            margin-bottom: 20px; 
+            position: relative; 
+        }
+
+        .model-group {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
         
         select {
             padding: 8px;
@@ -164,8 +178,6 @@
             border-radius: 6px;
             border: 1px solid #ccc;
             cursor: pointer;
-            margin-top: 5px;
-            width: 100%;
             max-width: 300px;
         }
         
@@ -174,7 +186,6 @@
             align-items: center;
             justify-content: center;
             gap: 10px;
-            margin: 15px 0;
             flex-wrap: wrap;
         }
         .date-controls button {
@@ -478,15 +489,17 @@
         </div>
 
         <div class="header">
-            <label for="model-select" style="font-size: 13px;">Modèle </label>
-            <select id="model-select" style="box-shadow: 0 0px 2px rgba(0,0,0,0.5);">
-                <option value="best_match">Meilleure correspondance</option>
-                <option value="arome_france">AROME (Météo-France)</option>
-                <option value="meteofrance_arpege_europe">ARPEGE (Météo-France)</option>
-                <option value="icon_d2">ICON-D2 (DWD)</option>
-                <option value="icon_eu">ICON-EU (DWD)</option>
-                <option value="gfs_seamless">GFS (NOAA)</option>
-            </select>
+            <div class="model-group">
+                <label for="model-select" style="font-size: 13px;">Modèle :</label>
+                <select id="model-select" style="box-shadow: 0 0px 2px rgba(0,0,0,0.5);">
+                    <option value="best_match">Meilleure correspondance</option>
+                    <option value="arome_france">AROME (Météo-France)</option>
+                    <option value="meteofrance_arpege_europe">ARPEGE (Météo-France)</option>
+                    <option value="icon_d2">ICON-D2 (DWD)</option>
+                    <option value="icon_eu">ICON-EU (DWD)</option>
+                    <option value="gfs_seamless">GFS (NOAA)</option>
+                </select>
+            </div>
 
             <div class="date-controls">
                 <button id="btn-prev" style="box-shadow: 0 0px 2px rgba(0,0,0,0.5);">◀</button>
