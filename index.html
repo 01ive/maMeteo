@@ -274,23 +274,40 @@
         .btn-save { background-color: #2980b9; color: white; }
         .btn-cancel { background-color: #eee; color: #333; }
 
-        /* --- Styles spécifiques au Mode Simple sur Bureau --- */
+        /* --- Styles spécifiques au Mode Simple sur Bureau : Hauteur synchronisée stricte --- */
         body.compact-view .grid-chart-layout {
             flex-direction: row;
             flex-wrap: nowrap;
-            align-items: flex-start;
-            width: 100%; /* S'assure d'utiliser toute la largeur du volet de droite */
+            align-items: stretch; /* Étire le conteneur du graphique à la hauteur du tableau */
+            width: 100%; 
         }
         
         body.compact-view .grid-container {
-            flex: 0 0 auto;     /* Le tableau garde sa taille naturelle */
-            width: max-content; /* Le conteneur épouse strictement les colonnes */
+            flex: 0 0 auto;
+            width: max-content; 
         }
         
         body.compact-view .chart-container {
-            flex: 1;            /* Demande au conteneur de prendre TOUT l'espace restant */
+            flex: 1;
             min-width: 0;       
-            overflow: hidden;   /* Crucial : force Chart.js à écouter les limites de ce conteneur */
+            position: relative; /* Devient le point de repère pour le graphique absolu */
+            display: block;     /* On annule flexbox à l'intérieur pour éviter les conflits */
+        }
+
+        body.compact-view #chart-title {
+            font-size: 15px; 
+            margin: 0 0 15px 0; 
+            height: 18px;       /* Hauteur fixe pour le titre */
+        }
+
+        body.compact-view .canvas-wrapper {
+            position: absolute;
+            top: 33px;          /* S'accroche sous le titre (hauteur 18px + marge 15px) */
+            bottom: 0;          /* S'accroche en bas du conteneur */
+            left: 0;
+            right: 0;
+            height: auto !important; /* Force l'annulation de la hauteur par défaut */
+            width: auto !important;
         }
 
         @media (max-width: 768px) {
