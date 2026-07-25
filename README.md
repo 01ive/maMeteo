@@ -1,8 +1,8 @@
 # 🌤️ Ma Météo
 
-Une application web interactive pour visualiser et analyser les données météorologiques en détail ! 
+Faire sa météo rapidement avant d'aller voller.
 
-Explorez les conditions atmosphériques à travers des cartes intuitives, des tableaux de vent détaillés et des émagrammes professionnels.
+Explorez les conditions atmosphériques facilement.
 
 [Application web](https://01ive.github.io/maMeteo/)
 
@@ -63,71 +63,116 @@ Personnalisez l'affichage des données selon vos besoins et préférences.
 
 #### ☁️ Nébulosité
 
-Un nuage se forme lorsque l'air est saturé en humidité (100%). Sur un sondage, cela se traduit visuellement par la rencontre de la courbe de Température et de la courbe du Point de rosée.
+Dans l’interface, la couverture nuageuse affichée n’est pas une valeur brute de l’API. Elle est dérivée de l’humidité relative calculée à partir de la température et du point de rosée :
 
-Il suffit de calculer l'écart entre ces deux valeurs (ce qu'on appelle le Spread).
-* Si $T - T_d \le 1.5^\circ\text{C}$ : C'est un nuage dense (fond gris foncé).
-* Si $T - T_d \le 3.0^\circ\text{C}$ : L'air est très humide, bordure de nuage ou brouillard léger (fond gris très clair).
+$$e(T) = 6.112 \times e^{17.67T / (T + 243.5)}$$
+
+$$RH = \frac{e(T_d)}{e(T)} \times 100$$
+
+Ensuite, l’application applique un proxy visuel de couverture nuageuse :
+
+- si $RH < 80\%$, la valeur est fixée à $0$ ;
+- si $RH \ge 80\%$, elle devient :
+
+$$C_{nuage} = \min\left(100,\,(RH - 80) \times 5\right)$$
+
+Cette valeur sert à l’opacité des cellules de la grille et à la teinte de la zone nuageuse dans l’émagramme. Elle ne représente pas une couverture nuageuse météorologique absolue, mais un indicateur visuel de humidité et de probabilité de présence de nuages.
 
 #### 📈 Instabilité
 
-Pour modéliser le plafond thermique de manière autonome, nous appliquons la méthode météorologique classique du soulèvement de la parcelle d'air :
+Pour modéliser le plafond thermique, l’application simule l’ascension d’une parcelle d’air depuis la surface avec un offset configurable :
 
-- **Le déclencheur** : On prend la température au sol prévue par le modèle à laquelle on ajoute un "déclencheur" de surchauffe (ici $+2.5^\circ\text{C}$) pour simuler une bulle d'air qui se détache du sol.
+$$T_{parcel,0} = T_{base} + \text{parcelOffset}$$
 
-⚠️ La température au **sol à 2m** donnée par les models est souvent différente de la température de la **courbe de température**. Celà donne donc lieu à des **décallages**.
+Par défaut, $	ext{parcelOffset} = 0^\circ\text{C}$, mais il peut être modifié dans la configuration.
 
-- **Le gradient adiabatique sec** : On simule la montée de cette bulle. En s'élevant et en se dilatant, elle se refroidit d'environ $0.98^\circ\text{C}$ tous les $100\text{m}$.
+À chaque pas de $20\text{m}$, la parcelle évolue selon deux régimes :
 
-- **Le calcul** : Pour chaque niveau d'altitude $Z$, on calcule la température de la bulle avec la formule : $T_{parcelle} = T_{sol} + 2.5 - \left(\frac{Z}{100} \times 0.98\right)$
+- hors nuage : gradient adiabatique sec :
+  $$\Gamma_{sec} = -0.0098^\circ\text{C/m}$$
+- si la parcelle a atteint la base de nuage estimée par :
+  $$z_{cloudBase} = z_{base} + \max\left(0,\,(T_{base} - T_{d,base}) \times 125\right)$$
+  alors le calcul bascule sur un gradient pseudo-adiabatique humide, avec :
+  $$T_k = T_{parcel} + 273.15$$
+  $$e_s = 6.112 \times e^{17.67T_{parcel}/(T_{parcel} + 243.5)}$$
+  $$w_s = \frac{0.622 \times e_s}{P - e_s}$$
+  $$L = 2501000 - 2370T_{parcel}$$
+  $$\Gamma_{hum} = -\frac{9.80665}{1004} \times \frac{1 + \frac{Lw_s}{287.05T_k}}{1 + \frac{0.622L^2w_s}{1004 \times 287.05 \times T_k^2}}$$
 
-- **L'inversion** : On compare cette température à l'air environnant ($T_{env}$). Tant que $T_{parcelle} \ge T_{env}$, la bulle est plus chaude que l'air autour d'elle et continue de monter. Dès qu'elle devient plus froide, le thermique s'arrête net : c'est notre plafond espéré.
+Après chaque incrément, l’application applique un entraînement de $1\%$ à chaque pas de $20\text{m}$ :
 
-L'algorithme calcule ce processus pour les 24 heures et appliquer un trait rouge en bas de la cellule correspondante.
+$$T_{parcel,new} = T_{parcel} \times 0.99 + T_{env} \times 0.01$$
 
-**La base du nuage** : Si cette bulle invisible atteint le point de saturation (100% d'humidité) pendant sa montée, un nuage commence à se former. C'est le niveau de condensation, et cela correspond généralement à notre trait rouge.
+La parcelle cesse de monter dès que $T_{parcel} \le T_{env}$. Le plafond affiché est alors défini comme suit :
 
-**Le haut du nuage** (⚠️ non représenté): Une fois que le nuage se forme, la physique change radicalement. La condensation de la vapeur d'eau en gouttelettes libère de l'énergie (la chaleur latente). L'air à l'intérieur du nuage se refroidit alors beaucoup moins vite en montant (environ 0,5°C tous les 100m). Grâce à ce "moteur" thermique interne, l'air du nuage reste plus chaud que l'extérieur et continue de monter, formant le développement vertical du nuage.
+- dans la grille, le plafond est la hauteur atteinte par la parcelle, puis il est ramené à la base du nuage si la parcelle est entrée dans la zone nuageuse :
+  $$\text{exactAlt} = \max\left(z_{cloudBase}, z_{base}\right) \quad \text{si } \text{exactAlt} > z_{cloudBase}$$
+- dans l’émagramme, la ligne de plafond exploitable correspond à :
+  $$\text{plafondAlt} = \min\left(z_{top}, z_{cloudBase}\right)$$
 
-### 📊 L'émagramme
+Cette logique permet d’afficher un plafond “exploitable” et de bloquer le trait rouge si le thermique entre dans la zone nuageuse.
 
-Le diagramme thermodynamique pour analyser la stabilité atmosphérique et les phénomènes de convection.
+### 📊 L’émagramme
 
-### 🌈 Coloration de l'émagramme
+Le diagramme thermodynamique a été enrichi pour rendre plus lisibles les zones instables, la base des nuages et le plafond exploitable. L’émagramme affiche maintenant :
 
-On colorise la courbe de l'adiabatique séche via le gradient thermique vertical (le taux de refroidissement de l'air avec l'altitude) de la façon suivante :
+- une courbe de température de l’environnement,
+- une parcelle d’air ascendante,
+- un point de rosée,
+- une zone grisée pour représenter la couche nuageuse,
+- une ligne rouge de plafond thermique.
 
-* 🔴 **Rouge** (> 0.9°C/100m) : Masse d'air très instable (proche ou supérieure à l'adiabatique sèche). Les ascendances thermiques seront fortes et l'air monte facilement.
-* ⬛ **Noir** (0.6 à 0.9°C/100m) : Instabilité conditionnelle (ou instabilité latente).
-* 🟢 **Vert** (< 0.6°C/100m) : Masse d'air stable (adiabatique humide, isothermie ou inversion de température). Les mouvements verticaux sont bloqués.
+### 🌈 Coloration de l’émagramme
+
+La coloration de l’émagramme suit le gradient thermique local entre deux niveaux de l’atmosphère, calculé en °C / 100 m selon la formule :
+
+$$\text{lapseRate} = \frac{T_{env}(z_0) - T_{env}(z_1)}{z_1 - z_0} \times 100$$
+
+Dans le code, les seuils par défaut sont ceux définis dans la configuration de l’application :
+
+- **lapse1 = 0.6** : seuil de transition vers le vert
+- **lapse2 = 0.8** : seuil de transition vers le jaune
+- **lapse3 = 1.0** : seuil de transition vers l’orange
+- **lapse4 = 1.2** : seuil de transition vers le rouge
+- **lapse5 = 1.4** : seuil de transition vers le violet
+
+La correspondance utilisée est donc :
+
+* 🟣 **Violet** ($\ge 1.4$ °C/100m) : très forte instabilité, très proche de l’adiabatique sèche.
+* 🔴 **Rouge** ($\ge 1.2$ °C/100m) : forte instabilité.
+* 🟠 **Orange** ($\ge 1.0$ °C/100m) : instabilité marquée.
+* 🟡 **Jaune** ($\ge 0.8$ °C/100m) : instabilité modérée.
+* 🟢 **Vert** ($\ge 0.6$ °C/100m) : couche plutôt stable.
+* ⬛ **Noir** (< 0.6 °C/100m) : stabilité forte, isothermie ou inversion de température.
+
+Cette logique est utilisée pour colorer la courbe de température de l’environnement et rendre immédiatement visibles les couches qui favorisent ou bloquent la convection.
 
 #### 📐 Skew-T (Diagramme incliné)
 
-Dans les représentations météorologiques classiques, on "couche" (on incline) les lignes de température vers la droite. Pourquoi ? Parce que dans la troposphère, la température baisse naturellement avec l'altitude. En inclinant le graphique, une masse d'air standard apparaît comme une ligne verticale, ce qui permet à l'œil humain de repérer beaucoup plus facilement les anomalies, les inversions thermiques et les zones d'instabilité (comme la fameuse CAPE pour les orages ou les thermiques).
+Dans les représentations météorologiques classiques, on incline les lignes de température vers la droite pour compenser la baisse naturelle de température avec l’altitude. L’objectif est d’obtenir une masse d’air standard quasi verticale, ce qui rend beaucoup plus visibles les anomalies et les zones d’instabilité.
 
-Sur un graphique cartésien classique (Température en X, Altitude en Y), la courbe de température d'une atmosphère standard part en diagonale vers la gauche, car l'air se refroidit en montant (on perd environ 6.5°C tous les 1000m).
+Pour reproduire cet effet dans Chart.js, l’application applique à chaque point une déformation X proportionnelle à la chute de pression entre le bas du graphique et le niveau considéré :
 
-Le problème, c'est que l'œil humain repère très mal les petites variations sur une ligne en diagonale. Les météorologues ont donc inventé le Skew-T : ils inclinent ("skew") les lignes de température vers la droite pour compenser ce refroidissement naturel. Ainsi, une masse d'air standard apparaît presque verticale, et la moindre instabilité saute aux yeux.
+$$T_{skew} = T_{reel} + k \times \left(p_{bottom} - p\right)$$
 
-Pour incliner la courbe dans Chart.js (qui ne fait que des graphiques droits), nous appliquons cette formule à chaque point :$$T_{skew} = T_{reel} + k \times (1000 - P)$$
+- $T_{skew}$ : la température fictive utilisée pour le tracé.
+- $T_{reel}$ : la température réelle de l’air.
+- $k$ : le facteur SKEW_FACTOR.
+- $p_{bottom}$ : la pression au bas du graphique, calculée à partir de la base visible de la fenêtre :
+  $$p_{bottom} = \text{getEnvAtZ}(z_{bottom}).hpa$$
+  avec
+  $$z_{bottom} = \left\lfloor \frac{\text{elevation}}{500} \right\rfloor \times 500$$
+- $p$ : la pression du niveau considéré.
 
-$T_{skew}$ : La fausse température donnée au graphique pour décaler le point.
-
-$T_{reel}$ : La vraie température physique.$k$ : Notre fameux SKEW_FACTOR.
-
-$P$ : La pression du palier en hPa.
-
-$1000$ : Notre niveau de référence (le sol).
+Dans l’implémentation actuelle, $p_{bottom}$ n’est donc pas figé à 1000 hPa, mais défini à partir de la zone réellement affichée dans l’émagramme, ce qui rend le décalage cohérent avec la plage d’altitude visible.
 
 ##### 💡 Pourquoi exactement 0.08 ?
 
-Le choix de 0.08 est un compromis visuel parfait pour la taille de notre fenêtre web et notre plage d'altitude. Faisons le calcul avec la plus haute altitude de notre tableau (200 hPa, soit 11 800m) :
+Le choix de 0.08 reste un bon compromis visuel pour la taille de la fenêtre web et la plage d’altitude affichée. Avec un écart de pression d’environ 800 hPa entre le sol et 11 800 m, le décalage appliqué est de :
 
-Différence de pression avec le sol : $1000 - 200 = 800$ hPa.
+$$800 \times 0.08 = 64$$
 
-Décalage appliqué : $800 \times 0.04 = 64$.
-
-Cela signifie qu'au sommet du graphique, le point de température est décalé artificiellement de 64 degrés vers la droite.Si l'on considère qu'au sol il fait 15°C, à 11 800m il fait environ -50°C.Sans décalage, la courbe irait de 15 à -50 (soit un énorme écart visuel de 65 unités vers la gauche, la courbe serait très aplatie).Avec notre décalage de +64, le point haut se place à +14 sur l'axe X ($-50 + 64$). La courbe est redressée, reste au centre de l'écran et imite l'angle de ~45° d'un véritable émagramme papier.
+Ce qui place la courbe de température au centre du graphe et lui donne l’angle caractéristique d’un vrai diagramme Skew-T.
 
 ---
 

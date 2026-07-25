@@ -107,8 +107,8 @@
             overflow-x: hidden;
             padding: 20px;
             background-color: var(--bg-color);
-            /* border-left supprimé car le resizer joue le rôle de bordure */
             box-shadow: 0 8px 24px rgba(149, 157, 165, 0.15);
+            position: relative; /* Indispensable pour ancrer le menu de configuration ici */
         }
 
         .top-bar {
@@ -1596,6 +1596,7 @@
                             }
 
                             // 2. Dessiner le nuage (zone grise) SI la particule dépasse le LCL
+                            // 2. Dessiner le nuage (zone grise) SI la particule dépasse le LCL
                             if (cloudZone && cloudZone.length === 2) {
                                 const yBottom = y.getPixelForValue(cloudZone[0]); 
                                 const yTop = y.getPixelForValue(cloudZone[1]);    
@@ -1609,6 +1610,55 @@
                                 ctx.fillText('☁️', (chartArea.right - chartArea.left) / 2, yTop + Math.max(15, (yBottom - yTop)/2));
                                 ctx.restore();
                             }
+                        }, // <--- Attention à bien ajouter cette virgule
+                        
+                        // --- NOUVEAU : Affichage des valeurs de gradients sur la droite ---
+                        afterDraw: (chart) => {
+                            const { ctx, chartArea, scales: { y } } = chart;
+                            if (!chartArea) return;
+
+                            ctx.save();
+                            ctx.textAlign = 'right';
+                            ctx.textBaseline = 'middle';
+                            ctx.font = 'bold 11px sans-serif';
+                            ctx.lineJoin = 'round';
+
+                            // On parcourt les segments de bas en haut
+                            for (let i = 0; i < envData.length - 1; i++) {
+                                const d0 = envData[i];
+                                const d1 = envData[i+1];
+                                const dz = d1.z - d0.z;
+                                const dt = d0.t - d1.t; 
+                                
+                                if (dz > 0) {
+                                    const lapseRate = (dt / dz) * 100;
+                                    
+                                    // Détermination de la couleur selon vos seuils
+                                    let color = '#000000';
+                                    if (lapseRate >= appConfig.lapse5) color = '#9b59b6';
+                                    else if (lapseRate >= appConfig.lapse4) color = '#e74c3c';
+                                    else if (lapseRate >= appConfig.lapse3) color = '#e67e22';
+                                    else if (lapseRate >= appConfig.lapse2) color = '#f1c40f';
+                                    else if (lapseRate >= appConfig.lapse1) color = '#2ecc71';
+
+                                    // Calcul de la position verticale (au milieu du segment)
+                                    const py0 = y.getPixelForValue(d0.z);
+                                    const py1 = y.getPixelForValue(d1.z);
+                                    const pyMid = (py0 + py1) / 2;
+                                    
+                                    const text = lapseRate.toFixed(2);
+                                    
+                                    // Contour blanc de protection pour la lisibilité
+                                    ctx.lineWidth = 3;
+                                    ctx.strokeStyle = 'rgba(255,255,255,0.8)';
+                                    ctx.strokeText(text, chartArea.right - 5, pyMid);
+                                    
+                                    // Texte coloré
+                                    ctx.fillStyle = color;
+                                    ctx.fillText(text, chartArea.right - 5, pyMid);
+                                }
+                            }
+                            ctx.restore();
                         }
                     }
                 ]
