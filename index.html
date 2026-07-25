@@ -41,14 +41,30 @@
 
         /* Style de la poignée de redimensionnement PC */
         #resizer {
-            flex: 0 0 6px;
+            flex: 0 0 10px; /* Élargi à 10px pour faciliter la prise en main */
             background-color: #ccc;
             cursor: ew-resize; /* Curseur flèches horizontales */
             z-index: 10;
             transition: background-color 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        /* Création des 3 petites barres verticales */
+        #resizer::after {
+            content: "";
+            width: 2px;
+            height: 20px;
+            background-color: #999;
+            box-shadow: -3px 0 0 #999, 3px 0 0 #999;
+            transition: all 0.2s;
         }
         #resizer:hover, #resizer:active {
             background-color: #2980b9;
+        }
+        #resizer:hover::after, #resizer:active::after {
+            background-color: #fff;
+            box-shadow: -3px 0 0 #fff, 3px 0 0 #fff;
         }
 
         #map { width: 100%; height: 100%; }
@@ -329,11 +345,19 @@
             #left-panel { flex: 1 1 auto; width: 100%; height: auto; min-height: 0; }
             
             /* Le resizer devient horizontal et prend la couleur bleue de l'ancienne bordure */
+            /* Le resizer devient horizontal et prend la couleur bleue de l'ancienne bordure */
             #resizer { 
-                flex: 0 0 6px; 
+                flex: 0 0 10px; 
                 width: 100%; 
                 cursor: ns-resize; /* Curseur flèches verticales */
                 background-color: #2980b9; 
+            }
+            /* Transformation en 3 petites barres horizontales */
+            #resizer::after {
+                width: 25px;
+                height: 2px;
+                background-color: #fff;
+                box-shadow: 0 -3px 0 #fff, 0 3px 0 #fff;
             }
 
             #search-box { top: 10px; left: 50px; right: 10px; width: calc(100% - 60px); }
