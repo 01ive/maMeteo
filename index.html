@@ -5,9 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ma Météo</title>
     
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://www.openwindmap.org/js/widget-v1.js"></script>
 
     <style>
@@ -301,7 +301,7 @@
             display: flex;
             align-items: center;
         }
-        #config-btn:hover { transform: rotate(45deg); }
+        #config-btn:hover { transform: rotate(360deg); }
 
         #config-modal {
             display: none;
@@ -435,6 +435,7 @@
 </head>
 <body>
 
+    <!-- MAP on left side -->
     <div id="left-panel">
         <div id="search-box">
             <input type="text" id="search-input" placeholder="Rechercher un lieu (ville, sommet...)" />
@@ -446,9 +447,9 @@
 
     <div id="pioupiou-widget-container"></div>
 
-    <!-- NOUVEAU : La barre de redimensionnement -->
     <div id="resizer" title="Redimensionner le volet"></div>
 
+    <!-- TABLE and CHART on right side -->
     <div id="right-panel">
         <div class="top-bar">
             <span style="display: flex; align-items: center; gap: 5px;">
@@ -530,9 +531,8 @@
     </div>
 
     <script>
-        // --- VARIABLES DE CONFIGURATION GLOBALES ---
-        // --- VARIABLES DE CONFIGURATION GLOBALES ---
-        const appConfig = {
+        // Default configuration values
+        let appConfig = {
             windLight: 15,
             windMod: 30,
             windStrong: 50,
@@ -546,11 +546,78 @@
             parcelOffset: 0.0
         };
 
+        // Définition des niveaux de pression et d'altitude pour le tableau et le graphique
+        const LEVELS = [
+            { alt: "11800m", hpa: "200" },
+            { alt: "10500m", hpa: "250" },
+            { alt: "9000m",  hpa: "300" },
+            { alt: "7000m",  hpa: "400" },
+            { alt: "5500m",  hpa: "500" },
+            { alt: "4000m",  hpa: "600" },
+            { alt: "3000m",  hpa: "700" },
+            { alt: "2000m",  hpa: "800" },
+            { alt: "1500m",  hpa: "850" },
+            { alt: "1000m",  hpa: "900" },
+            { alt: "500m",   hpa: "950" },
+            { alt: "0m",     hpa: "1000" }
+        ];
+
+        const windSpeedVars = LEVELS.map(l => `windspeed_${l.hpa}hPa`).join(',');
+        const windDirVars = LEVELS.map(l => `winddirection_${l.hpa}hPa`).join(',');
+        const tempVars = LEVELS.map(l => `temperature_${l.hpa}hPa`).join(',');
+        const dewVars = LEVELS.map(l => `dewpoint_${l.hpa}hPa`).join(',');
+
+        // const compactModeRows = ["0m", "1000m", "2000m", "3000m", "4000m"];
+        const compactModeHours = [9, 13, 17];
+
+        // Default coordinates for Puy Mary at startup
+        let currentLat = 45.109; 
+        let currentLon = 2.676;
+
+        // Variables globales pour stocker les données meteo
+        let globalElevation = 0;
+        let globalWeatherData = null;
+        let globalDailyData = null; // Nouvelle variable pour lever/coucher du soleil
+        let sondageChartInstance = null;
+        let currentDate = new Date(); 
+        let activeLevels = [];    
+        
+        let isCompactView = false;
+        let selectedHourIndex = 12;
+
+        let isResizing = false;
+
+        // DOM Elements
         const configBtn = document.getElementById('config-btn');
         const configModal = document.getElementById('config-modal');
         const btnSave = document.getElementById('cfg-save');
         const btnCancel = document.getElementById('cfg-cancel');
 
+        const searchInput = document.getElementById('search-input');
+        const searchBtn = document.getElementById('search-btn');
+
+        const geolocBtn = document.getElementById('geoloc-btn');
+
+        const modelSelect = document.getElementById('model-select');
+        const windGrid = document.getElementById('wind-grid');
+        const loadingDiv = document.getElementById('loading');
+        const chartSection = document.getElementById('chart-section');
+        const chartTitle = document.getElementById('chart-title');
+        
+        const dateDisplay = document.getElementById('current-date-display');
+        const btnPrev = document.getElementById('btn-prev');
+        const btnNext = document.getElementById('btn-next');
+        const toggleViewBtn = document.getElementById('toggle-view-btn');
+
+        const resizer = document.getElementById('resizer');
+        const rightPanel = document.getElementById('right-panel');
+        
+        // --------------------------------------------------------------------------------------------------------------------------------------------
+        // ---------------------------------------------------------------- FUNCTIONS -----------------------------------------------------------------
+        // --------------------------------------------------------------------------------------------------------------------------------------------
+
+        // Fonctions des Pioupious
+        // --------------------------------------------------------------------------------------------------------------------------------------------
         function openPioupiouWidget(stationId) {
             const container = document.getElementById('pioupiou-widget-container');
             const widgetId = `PP${stationId}`; 
@@ -566,147 +633,6 @@
             script.async = true;
             document.body.appendChild(script);
         }
-
-        function getRelativeHumidity(t, td) {
-            if (t === null || td === null || t === undefined || td === undefined) return 0;
-            const eT = 6.112 * Math.exp((17.67 * t) / (t + 243.5));
-            const eTd = 6.112 * Math.exp((17.67 * td) / (td + 243.5));
-            return (eTd / eT) * 100;
-        }
-
-        function openConfig() {
-            document.getElementById('cfg-wind-light').value = appConfig.windLight;
-            document.getElementById('cfg-wind-mod').value = appConfig.windMod;
-            document.getElementById('cfg-wind-strong').value = appConfig.windStrong;
-            document.getElementById('cfg-wind-gale').value = appConfig.windGale;
-            document.getElementById('cfg-lapse1').value = appConfig.lapse1;
-            document.getElementById('cfg-lapse2').value = appConfig.lapse2;
-            document.getElementById('cfg-lapse3').value = appConfig.lapse3;
-            document.getElementById('cfg-lapse4').value = appConfig.lapse4;
-            document.getElementById('cfg-lapse5').value = appConfig.lapse5;
-            document.getElementById('cfg-skew').value = appConfig.skewFactor;
-            document.getElementById('cfg-offset').value = appConfig.parcelOffset;
-            configModal.style.display = 'block';
-        }
-
-        function closeConfig() { configModal.style.display = 'none'; }
-
-        function saveConfig() {
-            appConfig.windLight = parseFloat(document.getElementById('cfg-wind-light').value);
-            appConfig.windMod = parseFloat(document.getElementById('cfg-wind-mod').value);
-            appConfig.windStrong = parseFloat(document.getElementById('cfg-wind-strong').value);
-            appConfig.windGale = parseFloat(document.getElementById('cfg-wind-gale').value);
-            appConfig.lapse1 = parseFloat(document.getElementById('cfg-lapse1').value);
-            appConfig.lapse2 = parseFloat(document.getElementById('cfg-lapse2').value);
-            appConfig.lapse3 = parseFloat(document.getElementById('cfg-lapse3').value);
-            appConfig.lapse4 = parseFloat(document.getElementById('cfg-lapse4').value);
-            appConfig.lapse5 = parseFloat(document.getElementById('cfg-lapse5').value);
-            appConfig.skewFactor = parseFloat(document.getElementById('cfg-skew').value);
-            appConfig.parcelOffset = parseFloat(document.getElementById('cfg-offset').value);
-            
-            closeConfig();
-            
-            if (globalWeatherData) {
-                renderGrid(globalWeatherData);
-                loadPioupiouStations(); 
-            }
-        }
-
-        configBtn.addEventListener('click', openConfig);
-        btnCancel.addEventListener('click', closeConfig);
-        btnSave.addEventListener('click', saveConfig);
-
-        let currentLat = 45.109; 
-        let currentLon = 2.676;
-
-        const map = L.map('map').setView([currentLat, currentLon], 11);
-        
-        L.tileLayer('https://data.geopf.fr/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=GEOGRAPHICALGRIDSYSTEMS.PLANIGNV2&STYLE=normal&FORMAT=image/png&TILEMATRIXSET=PM&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}', {
-            maxZoom: 19,
-            attribution: '© <a href="https://www.ign.fr/">IGN</a> - Géoportail'
-        }).addTo(map);
-
-        let marker = L.marker([currentLat, currentLon]).addTo(map);
-
-        const searchInput = document.getElementById('search-input');
-        const searchBtn = document.getElementById('search-btn');
-
-        async function performSearch() {
-            const query = searchInput.value.trim();
-            if (!query) return;
-            const originalText = searchBtn.innerText;
-            searchBtn.innerText = "⏳";
-            
-            try {
-                const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1`);
-                const data = await response.json();
-                
-                if (data && data.length > 0) {
-                    const result = data[0];
-                    currentLat = parseFloat(result.lat);
-                    currentLon = parseFloat(result.lon);
-                    
-                    map.setView([currentLat, currentLon], 11);
-                    marker.setLatLng([currentLat, currentLon]);
-                    
-                    document.getElementById('coords-display').innerText = `${currentLat.toFixed(3)}°N, ${currentLon.toFixed(3)}°E`;
-                    document.getElementById('location-name').innerText = result.name || result.display_name.split(',')[0];
-                    
-                    fetchWeatherData();
-                } else {
-                    alert("Lieu introuvable. Veuillez essayer une autre formulation.");
-                }
-            } catch (error) {
-                console.error("Erreur de recherche :", error);
-                alert("Erreur de connexion lors de la recherche.");
-            } finally {
-                searchBtn.innerText = originalText;
-            }
-        }
-
-        searchBtn.addEventListener('click', performSearch);
-        searchInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') performSearch(); });
-
-        const geolocBtn = document.getElementById('geoloc-btn');
-
-        geolocBtn.addEventListener('click', () => {
-            if (!navigator.geolocation) {
-                alert("La géolocalisation n'est pas supportée par votre navigateur.");
-                return;
-            }
-            
-            const originalText = geolocBtn.innerText;
-            geolocBtn.innerText = "⏳";
-            
-            navigator.geolocation.getCurrentPosition(async (position) => {
-                currentLat = position.coords.latitude;
-                currentLon = position.coords.longitude;
-                
-                map.setView([currentLat, currentLon], 11);
-                marker.setLatLng([currentLat, currentLon]);
-                
-                document.getElementById('coords-display').innerText = `${currentLat.toFixed(3)}°N, ${currentLon.toFixed(3)}°E`;
-                document.getElementById('location-name').innerText = "Recherche...";
-                
-                try {
-                    const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${currentLat}&lon=${currentLon}&zoom=10`);
-                    const data = await response.json();
-                    const placeName = data.address.city || data.address.town || data.address.village || data.address.municipality || data.name || "Position géolocalisée";
-                    document.getElementById('location-name').innerText = placeName;
-                } catch (error) {
-                    document.getElementById('location-name').innerText = "Position géolocalisée";
-                }
-                
-                fetchWeatherData();
-                geolocBtn.innerText = originalText;
-            }, (error) => {
-                console.error("Erreur Géoloc :", error);
-                alert("Impossible de récupérer votre position. Vérifiez les permissions de votre navigateur.");
-                geolocBtn.innerText = originalText;
-            });
-        });
-
-        let pioupiouLayer = L.layerGroup().addTo(map);
 
         async function loadPioupiouStations() {
             const API_URL = 'https://api.pioupiou.fr/v1/live/all';
@@ -786,10 +712,119 @@
             } catch (error) { console.error("Erreur lors du chargement des balises Pioupiou :", error); }
         }
 
-        loadPioupiouStations();
-        setInterval(loadPioupiouStations, 5 * 60 * 1000);
+        // Fonctions du menu de configuration
+        // --------------------------------------------------------------------------------------------------------------------------------------------
+        function openConfig() {
+            document.getElementById('cfg-wind-light').value = appConfig.windLight;
+            document.getElementById('cfg-wind-mod').value = appConfig.windMod;
+            document.getElementById('cfg-wind-strong').value = appConfig.windStrong;
+            document.getElementById('cfg-wind-gale').value = appConfig.windGale;
+            document.getElementById('cfg-lapse1').value = appConfig.lapse1;
+            document.getElementById('cfg-lapse2').value = appConfig.lapse2;
+            document.getElementById('cfg-lapse3').value = appConfig.lapse3;
+            document.getElementById('cfg-lapse4').value = appConfig.lapse4;
+            document.getElementById('cfg-lapse5').value = appConfig.lapse5;
+            document.getElementById('cfg-skew').value = appConfig.skewFactor;
+            document.getElementById('cfg-offset').value = appConfig.parcelOffset;
+            configModal.style.display = 'block';
+        }
 
-        map.on('click', async function(e) {
+        function closeConfig() { configModal.style.display = 'none'; }
+
+        function saveConfig() {
+            appConfig.windLight = parseFloat(document.getElementById('cfg-wind-light').value);
+            appConfig.windMod = parseFloat(document.getElementById('cfg-wind-mod').value);
+            appConfig.windStrong = parseFloat(document.getElementById('cfg-wind-strong').value);
+            appConfig.windGale = parseFloat(document.getElementById('cfg-wind-gale').value);
+            appConfig.lapse1 = parseFloat(document.getElementById('cfg-lapse1').value);
+            appConfig.lapse2 = parseFloat(document.getElementById('cfg-lapse2').value);
+            appConfig.lapse3 = parseFloat(document.getElementById('cfg-lapse3').value);
+            appConfig.lapse4 = parseFloat(document.getElementById('cfg-lapse4').value);
+            appConfig.lapse5 = parseFloat(document.getElementById('cfg-lapse5').value);
+            appConfig.skewFactor = parseFloat(document.getElementById('cfg-skew').value);
+            appConfig.parcelOffset = parseFloat(document.getElementById('cfg-offset').value);
+            
+            closeConfig();
+            
+            if (globalWeatherData) {
+                renderGrid(globalWeatherData);
+                loadPioupiouStations(); 
+            }
+        }
+
+        // Fonctions de localisation et de recherche
+        // --------------------------------------------------------------------------------------------------------------------------------------------
+        function getGpsLocation() {
+            if (!navigator.geolocation) {
+                alert("La géolocalisation n'est pas supportée par votre navigateur.");
+                return;
+            }
+            
+            const originalText = geolocBtn.innerText;
+            geolocBtn.innerText = "⏳";
+            
+            navigator.geolocation.getCurrentPosition(async (position) => {
+                currentLat = position.coords.latitude;
+                currentLon = position.coords.longitude;
+                
+                map.setView([currentLat, currentLon], 11);
+                marker.setLatLng([currentLat, currentLon]);
+                
+                document.getElementById('coords-display').innerText = `${currentLat.toFixed(3)}°N, ${currentLon.toFixed(3)}°E`;
+                document.getElementById('location-name').innerText = "Recherche...";
+                
+                try {
+                    const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${currentLat}&lon=${currentLon}&zoom=10`);
+                    const data = await response.json();
+                    const placeName = data.address.city || data.address.town || data.address.village || data.address.municipality || data.name || "Position géolocalisée";
+                    document.getElementById('location-name').innerText = placeName;
+                } catch (error) {
+                    document.getElementById('location-name').innerText = "Position géolocalisée";
+                }
+                
+                fetchWeatherData();
+                geolocBtn.innerText = originalText;
+            }, (error) => {
+                console.error("Erreur Géoloc :", error);
+                alert("Impossible de récupérer votre position. Vérifiez les permissions de votre navigateur.");
+                geolocBtn.innerText = originalText;
+            });
+        }
+
+        async function performSearch() {
+            const query = searchInput.value.trim();
+            if (!query) return;
+            const originalText = searchBtn.innerText;
+            searchBtn.innerText = "⏳";
+            
+            try {
+                const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1`);
+                const data = await response.json();
+                
+                if (data && data.length > 0) {
+                    const result = data[0];
+                    currentLat = parseFloat(result.lat);
+                    currentLon = parseFloat(result.lon);
+                    
+                    map.setView([currentLat, currentLon], 11);
+                    marker.setLatLng([currentLat, currentLon]);
+                    
+                    document.getElementById('coords-display').innerText = `${currentLat.toFixed(3)}°N, ${currentLon.toFixed(3)}°E`;
+                    document.getElementById('location-name').innerText = result.name || result.display_name.split(',')[0];
+                    
+                    fetchWeatherData();
+                } else {
+                    alert("Lieu introuvable. Veuillez essayer une autre formulation.");
+                }
+            } catch (error) {
+                console.error("Erreur de recherche :", error);
+                alert("Erreur de connexion lors de la recherche.");
+            } finally {
+                searchBtn.innerText = originalText;
+            }
+        }
+
+        async function setGpsPositionByMapClick(e) {
             currentLat = e.latlng.lat;
             currentLon = e.latlng.lng;
             marker.setLatLng([currentLat, currentLon]);
@@ -805,51 +840,16 @@
                 document.getElementById('location-name').innerText = "Position sélectionnée";
             }
             fetchWeatherData();
-        });
+        }
 
-        // --- GESTION DE LA MÉTÉO ---
-        const LEVELS = [
-            { alt: "11800m", hpa: "200" },
-            { alt: "10500m", hpa: "250" },
-            { alt: "9000m",  hpa: "300" },
-            { alt: "7000m",  hpa: "400" },
-            { alt: "5500m",  hpa: "500" },
-            { alt: "4000m",  hpa: "600" },
-            { alt: "3000m",  hpa: "700" },
-            { alt: "2000m",  hpa: "800" },
-            { alt: "1500m",  hpa: "850" },
-            { alt: "1000m",  hpa: "900" },
-            { alt: "500m",   hpa: "950" },
-            { alt: "0m",     hpa: "1000" }
-        ];
-
-        let globalElevation = 0;
-        let globalWeatherData = null;
-        let globalDailyData = null; // Nouvelle variable pour lever/coucher du soleil
-        let sondageChartInstance = null;
-        let currentDate = new Date(); 
-        let activeLevels = []; 
-
-        const modelSelect = document.getElementById('model-select');
-        const windGrid = document.getElementById('wind-grid');
-        const loadingDiv = document.getElementById('loading');
-        const chartSection = document.getElementById('chart-section');
-        const chartTitle = document.getElementById('chart-title');
-        
-        const dateDisplay = document.getElementById('current-date-display');
-        const btnPrev = document.getElementById('btn-prev');
-        const btnNext = document.getElementById('btn-next');
-        const toggleViewBtn = document.getElementById('toggle-view-btn');
-
-        const windSpeedVars = LEVELS.map(l => `windspeed_${l.hpa}hPa`).join(',');
-        const windDirVars = LEVELS.map(l => `winddirection_${l.hpa}hPa`).join(',');
-        const tempVars = LEVELS.map(l => `temperature_${l.hpa}hPa`).join(',');
-        const dewVars = LEVELS.map(l => `dewpoint_${l.hpa}hPa`).join(',');
-
-        const compactModeRows = ["0m", "1000m", "2000m", "3000m", "4000m"];
-        const compactModeHours = [9, 13, 17];
-        let isCompactView = false;
-        let selectedHourIndex = 12;
+        // Fonctions de calculs météorologiques
+        // --------------------------------------------------------------------------------------------------------------------------------------------
+        function getRelativeHumidity(t, td) {
+            if (t === null || td === null || t === undefined || td === undefined) return 0;
+            const eT = 6.112 * Math.exp((17.67 * t) / (t + 243.5));
+            const eTd = 6.112 * Math.exp((17.67 * td) / (td + 243.5));
+            return (eTd / eT) * 100;
+        }
 
         function interpolateValue(z, z1, val1, z2, val2) {
             if (val1 === null || val2 === null || val1 === undefined || val2 === undefined) return null;
@@ -981,20 +981,10 @@
             } finally {
                 loadingDiv.style.visibility = 'hidden';
             }
-        }
+        }        
 
-        btnPrev.addEventListener('click', () => { currentDate.setDate(currentDate.getDate() - 1); updateDateDisplay(); fetchWeatherData(); });
-        btnNext.addEventListener('click', () => { currentDate.setDate(currentDate.getDate() + 1); updateDateDisplay(); fetchWeatherData(); });
-        modelSelect.addEventListener('change', () => { fetchWeatherData(); });
-        toggleViewBtn.addEventListener('click', () => {
-            isCompactView = !isCompactView;
-            document.body.classList.toggle('compact-view', isCompactView);
-            toggleViewBtn.innerText = isCompactView ? '24h' : '3h';
-            if (globalWeatherData) {
-                renderGrid(globalWeatherData);
-            }
-        });
-
+        // Fonctions de rendu du tableau et du graphique
+        // --------------------------------------------------------------------------------------------------------------------------------------------
         function getWindColorClass(speed) {
             if (speed < appConfig.windLight) return 'wind-light';
             if (speed < appConfig.windMod) return 'wind-mod';
@@ -1691,11 +1681,8 @@
             }
         }
 
-        // --- LOGIQUE DE REDIMENSIONNEMENT (RESIZER) ---
-        const resizer = document.getElementById('resizer');
-        const rightPanel = document.getElementById('right-panel');
-        let isResizing = false;
-
+        // Fonctions de redimensionnement du panneau droit
+        // --------------------------------------------------------------------------------------------------------------------------------------------
         function startResize(e) {
             isResizing = true;
             document.body.style.cursor = window.innerWidth > 768 ? 'ew-resize' : 'ns-resize';
@@ -1737,6 +1724,56 @@
             }
         }
 
+        // --------------------------------------------------------------------------------------------------------------------------------------------
+        // ------------------------------------------------------------------- MAIN -------------------------------------------------------------------
+        // --------------------------------------------------------------------------------------------------------------------------------------------
+
+        // Map initializations
+        // --------------------------------------------------------------------------------------------------------------------------------------------
+        searchBtn.addEventListener('click', performSearch);
+        searchInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') performSearch(); });
+
+        geolocBtn.addEventListener('click', getGpsLocation);
+
+        const map = L.map('map').setView([currentLat, currentLon], 11);
+        
+        // Use IGN's tiles for the map
+        L.tileLayer('https://data.geopf.fr/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=GEOGRAPHICALGRIDSYSTEMS.PLANIGNV2&STYLE=normal&FORMAT=image/png&TILEMATRIXSET=PM&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}', {
+            maxZoom: 19,
+            attribution: '© <a href="https://www.ign.fr/">IGN</a> - Géoportail'
+        }).addTo(map);
+
+        let marker = L.marker([currentLat, currentLon]).addTo(map);
+        let pioupiouLayer = L.layerGroup().addTo(map);       
+
+        loadPioupiouStations();
+        setInterval(loadPioupiouStations, 5 * 60 * 1000);
+
+        map.on('click', setGpsPositionByMapClick);        
+
+
+        // Right panel initializations
+        // --------------------------------------------------------------------------------------------------------------------------------------------
+        
+        // Right panel event listeners
+        configBtn.addEventListener('click', openConfig);
+        btnCancel.addEventListener('click', closeConfig);
+        btnSave.addEventListener('click', saveConfig);
+        btnPrev.addEventListener('click', () => { currentDate.setDate(currentDate.getDate() - 1); updateDateDisplay(); fetchWeatherData(); });
+        btnNext.addEventListener('click', () => { currentDate.setDate(currentDate.getDate() + 1); updateDateDisplay(); fetchWeatherData(); });
+        modelSelect.addEventListener('change', () => { fetchWeatherData(); });
+        toggleViewBtn.addEventListener('click', () => {
+            isCompactView = !isCompactView;
+            document.body.classList.toggle('compact-view', isCompactView);
+            toggleViewBtn.innerText = isCompactView ? '24h' : '3h';
+            if (globalWeatherData) {
+                renderGrid(globalWeatherData);
+            }
+        });
+
+        // Resizer logic initialization
+        // --------------------------------------------------------------------------------------------------------------------------------------------
+
         // Écouteurs d'événements pour lancer le drag
         resizer.addEventListener('mousedown', startResize);
         resizer.addEventListener('touchstart', startResize, { passive: false });
@@ -1749,6 +1786,8 @@
         window.addEventListener('mouseup', stopResize);
         window.addEventListener('touchend', stopResize);
 
+        // Initial fetch of weather data
+        // --------------------------------------------------------------------------------------------------------------------------------------------
         fetchWeatherData();
     </script>
 </body>
