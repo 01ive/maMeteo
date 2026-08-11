@@ -787,7 +787,7 @@
         }
 
         loadPioupiouStations();
-        setInterval(loadPioupiouStations, 10 * 60 * 1000);
+        setInterval(loadPioupiouStations, 5 * 60 * 1000);
 
         map.on('click', async function(e) {
             currentLat = e.latlng.lat;
