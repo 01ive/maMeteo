@@ -284,7 +284,7 @@
             box-shadow: 0 4px 15px rgba(0,0,0,0.3); 
             overflow-y: auto;
             max-height: 95vh;
-            min-width: 300px;
+            min-width: 400px;
             display: none;
         }
 
@@ -391,7 +391,7 @@
             .top-bar h2 { font-size: 1.2rem; }
             select, .date-controls button, #toggle-view-btn { padding: 10px; }
             #config-modal { width: 90%; left: 5%; top: 50vh; transform: translateY(-50%); position: fixed; }
-            #pioupiou-widget-container { left: 50% !important; transform: translateX(-50%); top: 5px !important; height: 95vh; min-width: 80vw !important; max-height: 90vh !important; z-index: 2000; }
+            #pioupiou-widget-container { left: 50% !important; transform: translateX(-50%); top: 5px !important; height: 95vh; width: 100vw !important; max-height: 90vh !important; z-index: 2000; }
             /* --- Mode simple sur Mobile : Hauteur synchronisée stricte --- */
             body.compact-view .grid-chart-layout { 
                 flex-direction: row; 
@@ -1788,6 +1788,7 @@
 
         // Initial fetch of weather data
         // --------------------------------------------------------------------------------------------------------------------------------------------
+        updateDateDisplay();
         fetchWeatherData();
     </script>
 </body>
