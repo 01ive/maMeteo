@@ -567,7 +567,7 @@
         const tempVars = LEVELS.map(l => `temperature_${l.hpa}hPa`).join(',');
         const dewVars = LEVELS.map(l => `dewpoint_${l.hpa}hPa`).join(',');
 
-        // const compactModeRows = ["0m", "1000m", "2000m", "3000m", "4000m"];
+        const compactModeRows = ["0m", "1000m", "2000m", "3000m", "4000m", "5500m"];
         const compactModeHours = [9, 13, 17];
 
         // Default coordinates for Puy Mary at startup
@@ -865,6 +865,7 @@
 
         function updateActiveLevels() {
             activeLevels = [];
+
             LEVELS.forEach(l => {
                 if (parseInt(l.alt) > globalElevation) {
                     activeLevels.push({ ...l, z: parseInt(l.alt) });
@@ -875,6 +876,9 @@
                 isSurface: true, 
                 z: globalElevation 
             });
+            activeLevels = isCompactView
+                ? activeLevels.filter(level => compactModeRows.includes(level.alt) || level.isSurface)
+                : activeLevels;
         }
 
         function getLevelData(level, hourIndex, hourlyData) {
@@ -1158,9 +1162,6 @@
             });
             table.appendChild(topRow);
 
-            // const visibleLevels = isCompactView
-            //     ? activeLevels.filter(level => compactModeRows.includes(level.alt) || level.isSurface)
-            //     : activeLevels;
             const visibleLevels = activeLevels;
 
             visibleLevels.forEach(level => {
@@ -1420,7 +1421,7 @@
                 existingChart.destroy();
             }
             const ctx = canvas.getContext('2d');
-
+            
             const datasets = [
                 {
                     label: 'Température (°C)',
@@ -1767,6 +1768,7 @@
             document.body.classList.toggle('compact-view', isCompactView);
             toggleViewBtn.innerText = isCompactView ? '24h' : '3h';
             if (globalWeatherData) {
+                updateActiveLevels();
                 renderGrid(globalWeatherData);
             }
         });
