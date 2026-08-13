@@ -502,7 +502,7 @@
         <div class="header">
             <div class="model-group">
                 <select id="model-select" style="box-shadow: 0 0px 2px rgba(0,0,0,0.5);">
-                    <option value="best_match">Meilleure model</option>
+                    <option value="best_match">Meilleur model</option>
                     <option value="arome_france">AROME (Météo-France)</option>
                     <option value="meteofrance_arpege_europe">ARPEGE (Météo-France)</option>
                     <option value="icon_d2">ICON-D2 (DWD)</option>
@@ -979,7 +979,9 @@
                 updateActiveLevels();
                 
                 renderGrid(globalWeatherData);
-                drawSondage(14, "14h", false); 
+                const currentTime = new Date();
+                const currentHour = currentTime.getHours();
+                drawSondage(currentHour, `${currentHour}h`, true);
 
             } catch (error) {
                 console.error("Erreur API :", error);
