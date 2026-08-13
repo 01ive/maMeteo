@@ -700,21 +700,10 @@
                         `;
 
                         marker.bindPopup(popupContent);
-
-                        // Gestion unifiée PC et Mobile :
-                        // Sur PC -> mouseover ouvre, mouseout ne ferme plus pour que la popup reste accrochée
-                        // Sur Mobile -> click ouvre, et un clic ailleurs (ou sur une autre) gère la fermeture
-                        if (window.innerWidth > 768) {
-                            marker.on('mouseover', function(e) {
-                                this.openPopup();
-                            });
-                            // Note : on retire le mouseout pour que la popup reste affichée 
-                            // jusqu'à ce que la souris passe sur un autre marqueur.
-                        } else {
-                            marker.on('click', function(e) {
-                                this.openPopup();
-                            });
-                        }
+                       
+                        marker.on('click', function(e) {
+                            this.openPopup();
+                        });                        
                     });
                 }
             } catch (error) { console.error("Erreur lors du chargement des balises Pioupiou :", error); }
