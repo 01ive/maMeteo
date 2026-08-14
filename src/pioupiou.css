@@ -1,0 +1,24 @@
+.pioupiou-marker { background: none; border: none; }
+
+#pioupiou-widget-container {
+    position: absolute; 
+    top: 50px; 
+    left: 50px; 
+    z-index: 1000; 
+    background: white; 
+    border-radius: 8px; 
+    box-shadow: 0 4px 15px rgba(0,0,0,0.3); 
+    overflow-y: auto;
+    max-height: 95vh;
+    min-width: 400px;
+}
+
+@media (max-width: 768px) {
+    #pioupiou-widget-container {
+        display: none;
+        left: 0 !important; 
+        top: 5px !important; 
+        height: 95vh; 
+        width: 95vw !important; 
+        z-index: 1000; }
+}

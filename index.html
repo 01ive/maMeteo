@@ -10,6 +10,13 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://www.openwindmap.org/js/widget-v1.js"></script>
 
+    <script src="src/pioupiou.js"></script>
+    <link rel="stylesheet" href="src/pioupiou.css" />
+
+
+    <script src="src/config.js"></script>
+    <link rel="stylesheet" href="src/config.css" />
+
     <style>
         :root {
             --bg-color: #f4f4f9;
@@ -261,75 +268,12 @@
         .y-axis { text-align: right; padding-right: 10px; white-space: nowrap; background-color: #f8f9fa; }
         .cell-content { display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 11px; font-weight: bold; text-shadow: 0px 0px 2px rgba(255,255,255,0.8); }
         .arrow { display: inline-block; font-size: 16px; transition: transform 0.3s ease; }
-        
-        .wind-light { color: #2ecc71; }
-        .wind-mod   { color: #f1c40f; }
-        .wind-strong{ color: #e67e22; }
-        .wind-gale  { color: #e74c3c; }
-        .wind-hurricane { color: #8e44ad; }
-        
+                
         #loading { position: absolute; top: -20px; left: 10px; font-style: italic; color: #666; height: 20px; font-size: 13px; }
 
         .chart-container { background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); display: none; }
         #chart-title { text-align: center; margin-top: 0; font-size: 15px; color: #2c3e50; margin-bottom: 15px; }
         .canvas-wrapper { position: relative; height: 450px; width: 100%; } /* Hauteur augmentée pour la proportionnalité linéaire */
-        
-        .pioupiou-marker { background: none; border: none; }
-
-        #pioupiou-widget-container {
-            position: absolute; 
-            top: 20px; 
-            left: 60px; 
-            z-index: 1000; 
-            background: white; 
-            border-radius: 8px; 
-            box-shadow: 0 4px 15px rgba(0,0,0,0.3); 
-            overflow-y: auto;
-            max-height: 95vh;
-            min-width: 400px;
-            display: none;
-        }
-
-        .owm-widget { width: 100% !important; height: 100% !important; display: block;}
-
-        #config-btn {
-            background: none;
-            border: none;
-            font-size: 22px;
-            cursor: pointer;
-            z-index: 10;
-            transition: transform 0.3s ease;
-            padding: 0;
-            display: flex;
-            align-items: center;
-        }
-        #config-btn:hover { transform: rotate(360deg); }
-
-        #config-modal {
-            display: none;
-            position: absolute;
-            top: 50px;
-            left: 15px;
-            background: white;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
-            z-index: 1000;
-            width: 300px;
-            border: 1px solid var(--border-color);
-            font-size: 13px;
-        }
-        #config-modal h3 { margin: 0 0 15px 0; font-size: 16px; color: #2c3e50; border-bottom: 2px solid #eee; padding-bottom: 5px; }
-        .config-section { margin-bottom: 15px; }
-        .config-section strong { display: block; margin-bottom: 10px; color: #2980b9; }
-        .config-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
-        .config-row label { color: #555; }
-        .config-row input { width: 60px; padding: 4px; border: 1px solid #ccc; border-radius: 4px; text-align: center; }
-        
-        .config-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px; }
-        .config-actions button { padding: 6px 12px; font-size: 13px; cursor: pointer; border: none; border-radius: 4px; font-weight: bold; }
-        .btn-save { background-color: #2980b9; color: white; }
-        .btn-cancel { background-color: #eee; color: #333; }
 
         /* --- Styles spécifiques au Mode Simple sur Bureau : Hauteur synchronisée stricte --- */
         body.compact-view .grid-chart-layout {
@@ -392,8 +336,6 @@
             #right-panel { flex: 0 0 55vh; width: 100%; min-height: 0; overflow-y: auto; border-left: none; border-top: none; padding: 10px 10px calc(20px + env(safe-area-inset-bottom, 20px)) 10px; }
             .top-bar h2 { font-size: 1.2rem; }
             select, .date-controls button, #toggle-view-btn { padding: 10px; }
-            #config-modal { width: 90%; left: 5%; top: 50vh; transform: translateY(-50%); position: fixed; }
-            #pioupiou-widget-container { left: 50% !important; transform: translateX(-50%); top: 5px !important; height: 95vh; width: 100vw !important; max-height: 90vh !important; z-index: 2000; }
             /* --- Mode simple sur Mobile : Hauteur synchronisée stricte --- */
             body.compact-view .grid-chart-layout { 
                 flex-direction: row; 
@@ -474,10 +416,10 @@
             <h3>Configuration</h3>
             <div class="config-section">
                 <strong>Vents Table (km/h)</strong>
-                <div class="config-row"><label>Faible (<span style="color:#2ecc71;">Vert</span>)</label><input type="number" id="cfg-wind-light" step="1"></div>
-                <div class="config-row"><label>Modéré (<span style="color:#f1c40f;">Jaune</span>)</label><input type="number" id="cfg-wind-mod" step="1"></div>
-                <div class="config-row"><label>Fort (<span style="color:#e67e22;">Orange</span>)</label><input type="number" id="cfg-wind-strong" step="1"></div>
-                <div class="config-row"><label>Très fort (<span style="color:#e74c3c;">Rouge</span>)</label><input type="number" id="cfg-wind-gale" step="1"></div>
+                <div class="config-row"><label>Faible (<span class="wind-light">Vert</span>)</label><input type="number" id="cfg-wind-light" step="1"></div>
+                <div class="config-row"><label>Modéré (<span class="wind-mod">Jaune</span>)</label><input type="number" id="cfg-wind-mod" step="1"></div>
+                <div class="config-row"><label>Fort (<span class="wind-strong">Orange</span>)</label><input type="number" id="cfg-wind-strong" step="1"></div>
+                <div class="config-row"><label>Très fort (<span class="wind-gale">Rouge</span>)</label><input type="number" id="cfg-wind-gale" step="1"></div>
             </div>
             <div class="config-section">
                 <strong>Émagramme (°C / 100m)</strong>
@@ -531,21 +473,6 @@
     </div>
 
     <script>
-        // Default configuration values
-        let appConfig = {
-            windLight: 15,
-            windMod: 30,
-            windStrong: 50,
-            windGale: 100,
-            lapse1: 0.6,
-            lapse2: 0.8,
-            lapse3: 1.0,
-            lapse4: 1.2,
-            lapse5: 1.4,
-            skewFactor: 0.08,
-            parcelOffset: 0.0
-        };
-
         // Définition des niveaux de pression et d'altitude pour le tableau et le graphique
         const LEVELS = [
             { alt: "11800m", hpa: "200" },
@@ -618,131 +545,6 @@
         // --------------------------------------------------------------------------------------------------------------------------------------------
         // ---------------------------------------------------------------- FUNCTIONS -----------------------------------------------------------------
         // --------------------------------------------------------------------------------------------------------------------------------------------
-
-        // Fonctions des Pioupious
-        // --------------------------------------------------------------------------------------------------------------------------------------------
-        function openPioupiouWidget(stationId) {
-            const container = document.getElementById('pioupiou-widget-container');
-            const widgetId = `PP${stationId}`; 
-            container.style.display = 'block';
-            container.innerHTML = `
-                <div style="padding: 5px; text-align: right; background: #f8f8f8;">
-                    <button onclick="document.getElementById('pioupiou-widget-container').style.display='none'" style="cursor:pointer;">✕</button>
-                </div>
-                <div class="owm-widget" data-id="${widgetId}" data-show-live="yes" data-show-2h="yes" data-show-24h="no"></div>
-            `;
-            const script = document.createElement('script');
-            script.src = "https://www.openwindmap.org/js/widget-v1.js";
-            script.async = true;
-            document.body.appendChild(script);
-        }
-
-        async function loadPioupiouStations() {
-            const API_URL = 'https://api.pioupiou.fr/v1/live/all';
-            try {
-                const response = await fetch(API_URL);
-                const result = await response.json();
-
-                if (result && result.data) {
-                    pioupiouLayer.clearLayers();
-                    
-                    result.data.forEach(station => {
-                        if (!station.location || !station.location.latitude || !station.location.longitude) return;
-
-                        const lat = station.location.latitude;
-                        const lon = station.location.longitude;
-                        
-                        const speedVal = station.measurements && station.measurements.wind_speed_avg !== null 
-                            ? Math.round(station.measurements.wind_speed_avg) : null;
-                        const speed = speedVal !== null ? speedVal : '-';
-                        const heading = station.measurements && station.measurements.wind_heading !== null 
-                            ? station.measurements.wind_heading : 0;
-                        const name = station.meta && station.meta.name 
-                            ? station.meta.name : `Pioupiou #${station.id}`;
-                        const colorClass = speedVal !== null ? getWindColorClass(speedVal) : '';
-
-                        const iconHtml = `
-                            <div style="position: absolute; transform: translate(-50%, -50%);">
-                                <div class="${colorClass}" style="background: rgba(255,255,255,0.95); border: 1px solid #ccc; border-radius: 12px; padding: 3px 8px; font-size: 12px; font-weight: bold; display: flex; align-items: center; gap: 6px; box-shadow: 0px 2px 4px rgba(0,0,0,0.3); white-space: nowrap;">
-                                    <span style="display: inline-block; transform: rotate(${heading}deg); font-size: 15px;">↓</span>
-                                    <span>${speed}</span>
-                                </div>
-                            </div>
-                        `;
-
-                        const pioupiouIcon = L.divIcon({ className: 'pioupiou-marker', html: iconHtml, iconSize: [0, 0], popupAnchor: [0, -15] });
-
-                        const min = station.measurements && station.measurements.wind_speed_min !== null ? station.measurements.wind_speed_min : '-';
-                        const max = station.measurements && station.measurements.wind_speed_max !== null ? station.measurements.wind_speed_max : '-';
-                        const dirDegrees = station.measurements && station.measurements.wind_heading !== null ? station.measurements.wind_heading : 0;
-                        const cardinal = getCardinalDirection(dirDegrees);
-
-                        const marker = L.marker([lat, lon], { icon: pioupiouIcon }).addTo(pioupiouLayer);
-
-                        // Définition de la popup standard
-                        // Construction du contenu de la popup avec le nom cliquable
-                        const popupContent = `
-                            <div style="text-align: center; font-family: sans-serif; line-height: 1.4;">
-                                <strong style="font-size: 14px; color: #2980b9; cursor: pointer; text-decoration: underline;" onclick="openPioupiouWidget(${station.id})">${name}</strong><br>
-                                <div style="font-size: 12px; margin-top: 5px;">
-                                    Vent : <span class="${colorClass}"><b>${speed} km/h</b></span> (${cardinal})<br>
-                                    <div style="display: flex; justify-content: space-between; gap: 10px; font-size: 11px; color: #555; margin-top: 5px;">
-                                        <span>Min: ${min}</span>
-                                        <span>Max: ${max}</span>
-                                    </div>
-                                </div>
-                            </div>
-                        `;
-
-                        marker.bindPopup(popupContent);
-                       
-                        marker.on('click', function(e) {
-                            this.openPopup();
-                        });                        
-                    });
-                }
-            } catch (error) { console.error("Erreur lors du chargement des balises Pioupiou :", error); }
-        }
-
-        // Fonctions du menu de configuration
-        // --------------------------------------------------------------------------------------------------------------------------------------------
-        function openConfig() {
-            document.getElementById('cfg-wind-light').value = appConfig.windLight;
-            document.getElementById('cfg-wind-mod').value = appConfig.windMod;
-            document.getElementById('cfg-wind-strong').value = appConfig.windStrong;
-            document.getElementById('cfg-wind-gale').value = appConfig.windGale;
-            document.getElementById('cfg-lapse1').value = appConfig.lapse1;
-            document.getElementById('cfg-lapse2').value = appConfig.lapse2;
-            document.getElementById('cfg-lapse3').value = appConfig.lapse3;
-            document.getElementById('cfg-lapse4').value = appConfig.lapse4;
-            document.getElementById('cfg-lapse5').value = appConfig.lapse5;
-            document.getElementById('cfg-skew').value = appConfig.skewFactor;
-            document.getElementById('cfg-offset').value = appConfig.parcelOffset;
-            configModal.style.display = 'block';
-        }
-
-        function closeConfig() { configModal.style.display = 'none'; }
-
-        function saveConfig() {
-            appConfig.windLight = parseFloat(document.getElementById('cfg-wind-light').value);
-            appConfig.windMod = parseFloat(document.getElementById('cfg-wind-mod').value);
-            appConfig.windStrong = parseFloat(document.getElementById('cfg-wind-strong').value);
-            appConfig.windGale = parseFloat(document.getElementById('cfg-wind-gale').value);
-            appConfig.lapse1 = parseFloat(document.getElementById('cfg-lapse1').value);
-            appConfig.lapse2 = parseFloat(document.getElementById('cfg-lapse2').value);
-            appConfig.lapse3 = parseFloat(document.getElementById('cfg-lapse3').value);
-            appConfig.lapse4 = parseFloat(document.getElementById('cfg-lapse4').value);
-            appConfig.lapse5 = parseFloat(document.getElementById('cfg-lapse5').value);
-            appConfig.skewFactor = parseFloat(document.getElementById('cfg-skew').value);
-            appConfig.parcelOffset = parseFloat(document.getElementById('cfg-offset').value);
-            
-            closeConfig();
-            
-            if (globalWeatherData) {
-                renderGrid(globalWeatherData);
-                loadPioupiouStations(); 
-            }
-        }
 
         // Fonctions de localisation et de recherche
         // --------------------------------------------------------------------------------------------------------------------------------------------
@@ -1057,7 +859,7 @@
                     let tParcelBase = tBase + appConfig.parcelOffset; 
                     
                     // Formule d'approximation du plafond nuageux : zBase + (tBase - tdBase) * 125
-                    let cloudBaseAlt = zBase + Math.max(0, (tBase - tdBase) * 125);
+                    let cloudBaseAlt = zBase + Math.max(0, (tParcelBase - tdBase) * 125);
                     
                     // 1. Préparer le profil de l'environnement pour cette heure spécifique
                     const reversedLevels = [...activeLevels].reverse();
@@ -1336,7 +1138,7 @@
             const tdBase = globalWeatherData.dewpoint_2m[hourIndex];
             const tParcelBase = (tBase !== undefined && tBase !== null) ? tBase + appConfig.parcelOffset : null;
             
-            let cloudBaseAlt = zBase + Math.max(0, (tBase - tdBase) * 125);
+            let cloudBaseAlt = zBase + Math.max(0, (tParcelBase - tdBase) * 125);
             let cloudZone = null; 
             let parcelPath = [];
             
@@ -1444,11 +1246,11 @@
                             // Calcul du gradient thermique (°C / 100m)
                             const lapseRate = (dt / dz) * 100;
                             
-                            if (lapseRate >= appConfig.lapse5) return '#9b59b6'; // Violet
-                            if (lapseRate >= appConfig.lapse4) return '#e74c3c'; // Rouge
-                            if (lapseRate >= appConfig.lapse3) return '#e67e22'; // Orange
-                            if (lapseRate >= appConfig.lapse2) return '#f1c40f'; // Jaune
-                            if (lapseRate >= appConfig.lapse1) return '#2ecc71'; // Vert
+                            if (lapseRate >= appConfig.lapse5) return lapseRateColor.lapse5; // Violet
+                            if (lapseRate >= appConfig.lapse4) return lapseRateColor.lapse4; // Rouge
+                            if (lapseRate >= appConfig.lapse3) return lapseRateColor.lapse3; // Orange
+                            if (lapseRate >= appConfig.lapse2) return lapseRateColor.lapse2; // Jaune
+                            if (lapseRate >= appConfig.lapse1) return lapseRateColor.lapse1; // Vert
                             return '#000000'; // Noir (< 0.6)
                         }
                     }
@@ -1634,11 +1436,11 @@
                                     
                                     // Détermination de la couleur selon vos seuils
                                     let color = '#000000';
-                                    if (lapseRate >= appConfig.lapse5) color = '#9b59b6';
-                                    else if (lapseRate >= appConfig.lapse4) color = '#e74c3c';
-                                    else if (lapseRate >= appConfig.lapse3) color = '#e67e22';
-                                    else if (lapseRate >= appConfig.lapse2) color = '#f1c40f';
-                                    else if (lapseRate >= appConfig.lapse1) color = '#2ecc71';
+                                    if (lapseRate >= appConfig.lapse5) color = lapseRateColor.lapse5;
+                                    else if (lapseRate >= appConfig.lapse4) color = lapseRateColor.lapse4;
+                                    else if (lapseRate >= appConfig.lapse3) color = lapseRateColor.lapse3;
+                                    else if (lapseRate >= appConfig.lapse2) color = lapseRateColor.lapse2;
+                                    else if (lapseRate >= appConfig.lapse1) color = lapseRateColor.lapse1;
 
                                     // Calcul de la position verticale (au milieu du segment)
                                     const py0 = y.getPixelForValue(d0.z);
