@@ -11,11 +11,19 @@
     <script src="https://www.openwindmap.org/js/widget-v1.js"></script>
 
     <script src="src/pioupiou.js"></script>
-    <link rel="stylesheet" href="src/pioupiou.css" />
-
+    <link rel="stylesheet" href="src/pioupiou.css"/>
 
     <script src="src/config.js"></script>
-    <link rel="stylesheet" href="src/config.css" />
+    <link rel="stylesheet" href="src/config.css"/>
+
+    <script src="src/table.js"></script>
+    <link rel="stylesheet" href="src/table.css"/>
+
+    <script src="src/sounding.js"></script>
+    <link rel="stylesheet" href="src/sounding.css"/>
+
+    <script src="src/tools.js"></script>
+    <script src="src/common.js"></script>
 
     <style>
         :root {
@@ -473,29 +481,10 @@
     </div>
 
     <script>
-        // Définition des niveaux de pression et d'altitude pour le tableau et le graphique
-        const LEVELS = [
-            { alt: "11800m", hpa: "200" },
-            { alt: "10500m", hpa: "250" },
-            { alt: "9000m",  hpa: "300" },
-            { alt: "7000m",  hpa: "400" },
-            { alt: "5500m",  hpa: "500" },
-            { alt: "4000m",  hpa: "600" },
-            { alt: "3000m",  hpa: "700" },
-            { alt: "2000m",  hpa: "800" },
-            { alt: "1500m",  hpa: "850" },
-            { alt: "1000m",  hpa: "900" },
-            { alt: "500m",   hpa: "950" },
-            { alt: "0m",     hpa: "1000" }
-        ];
-
         const windSpeedVars = LEVELS.map(l => `windspeed_${l.hpa}hPa`).join(',');
         const windDirVars = LEVELS.map(l => `winddirection_${l.hpa}hPa`).join(',');
         const tempVars = LEVELS.map(l => `temperature_${l.hpa}hPa`).join(',');
         const dewVars = LEVELS.map(l => `dewpoint_${l.hpa}hPa`).join(',');
-
-        const compactModeRows = ["0m", "1000m", "2000m", "3000m", "4000m", "5500m"];
-        const compactModeHours = [9, 13, 17];
 
         // Default coordinates for Puy Mary at startup
         let currentLat = 45.109; 
@@ -512,9 +501,6 @@
         let currentDate = new Date(); 
         let activeLevels = [];    
         
-        let isCompactView = false;
-        let selectedHourIndex = null;
-
         let isResizing = false;
 
         // DOM Elements
@@ -630,119 +616,30 @@
 
         // Fonctions de calculs météorologiques
         // --------------------------------------------------------------------------------------------------------------------------------------------
-        function getRelativeHumidity(t, td) {
-            if (t === null || td === null || t === undefined || td === undefined) return 0;
-            const eT = 6.112 * Math.exp((17.67 * t) / (t + 243.5));
-            const eTd = 6.112 * Math.exp((17.67 * td) / (td + 243.5));
-            return (eTd / eT) * 100;
-        }
-
-        function interpolateValue(z, z1, val1, z2, val2) {
-            if (val1 === null || val2 === null || val1 === undefined || val2 === undefined) return null;
-            if (z1 === z2) return val1;
-            return val1 + (val2 - val1) * ((z - z1) / (z2 - z1));
-        }
-
-        function interpolateDirection(z, z1, dir1, z2, dir2) {
-            if (dir1 === null || dir2 === null || dir1 === undefined || dir2 === undefined) return null;
-            let diff = ((dir2 - dir1 + 540) % 360) - 180;
-            return (dir1 + diff * ((z - z1) / (z2 - z1)) + 360) % 360;
-        }
-
-        function updateActiveLevels() {
-            activeLevels = [];
-
-            LEVELS.forEach(l => {
-                if (parseInt(l.alt) > globalElevation) {
-                    activeLevels.push({ ...l, z: parseInt(l.alt) });
-                }
-            });
-            activeLevels.push({ 
-                alt: Math.round(globalElevation) + "m (Sol)", 
-                isSurface: true, 
-                z: globalElevation 
-            });
-            activeLevels = isCompactView
-                ? activeLevels.filter(level => compactModeRows.includes(level.alt) || level.isSurface)
-                : activeLevels;
-        }
-
-        function getLevelData(level, hourIndex, hourlyData) {
-            if (!level.isSurface) {
-                return {
-                    temp: hourlyData[`temperature_${level.hpa}hPa`][hourIndex],
-                    dew: hourlyData[`dewpoint_${level.hpa}hPa`][hourIndex],
-                    windSpeed: hourlyData[`windspeed_${level.hpa}hPa`][hourIndex],
-                    windDir: hourlyData[`winddirection_${level.hpa}hPa`][hourIndex],
-                    hpa: parseInt(level.hpa)
-                };
-            }
-            
-            let levelAbove = [...LEVELS].reverse().find(l => parseInt(l.alt) > globalElevation);
-            let levelBelow = LEVELS.find(l => parseInt(l.alt) <= globalElevation);
-            
-            if (!levelAbove || !levelBelow) {
-                let closest = levelAbove || levelBelow || LEVELS[LEVELS.length - 1];
-                return {
-                    temp: hourlyData[`temperature_${closest.hpa}hPa`][hourIndex],
-                    dew: hourlyData[`dewpoint_${closest.hpa}hPa`][hourIndex],
-                    windSpeed: hourlyData[`windspeed_${closest.hpa}hPa`][hourIndex],
-                    windDir: hourlyData[`winddirection_${closest.hpa}hPa`][hourIndex],
-                    hpa: parseInt(closest.hpa)
-                };
-            }
-            
-            let zA = parseInt(levelAbove.alt);
-            let zB = parseInt(levelBelow.alt);
-            
-            let tA = hourlyData[`temperature_${levelAbove.hpa}hPa`][hourIndex];
-            let tB = hourlyData[`temperature_${levelBelow.hpa}hPa`][hourIndex];
-            let dspA = hourlyData[`windspeed_${levelAbove.hpa}hPa`][hourIndex];
-            let dspB = hourlyData[`windspeed_${levelBelow.hpa}hPa`][hourIndex];
-            let dirA = hourlyData[`winddirection_${levelAbove.hpa}hPa`][hourIndex];
-            let dirB = hourlyData[`winddirection_${levelBelow.hpa}hPa`][hourIndex];
-            let dewA = hourlyData[`dewpoint_${levelAbove.hpa}hPa`][hourIndex];
-            let dewB = hourlyData[`dewpoint_${levelBelow.hpa}hPa`][hourIndex];
-            
-            let pA = parseInt(levelAbove.hpa);
-            let pB = parseInt(levelBelow.hpa);
-
-            return {
-                temp: interpolateValue(globalElevation, zA, tA, zB, tB),
-                dew: interpolateValue(globalElevation, zA, dewA, zB, dewB),
-                windSpeed: interpolateValue(globalElevation, zA, dspA, zB, dspB),
-                windDir: interpolateDirection(globalElevation, zA, dirA, zB, dirB),
-                hpa: interpolateValue(globalElevation, zA, pA, zB, pB)
-            };
-        }
-
-        function getCardinalDirection(angle) {
-            const directions = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW', 'N'];
-            return directions[Math.round(angle / 45)];
-        }
-
         function updateDateDisplay() {
             const options = { weekday: 'short', day: 'numeric', month: 'short' };
             dateDisplay.innerText = currentDate.toLocaleDateString('fr-FR', options);
         }
 
-        function getApiDateString(date) {
-            const year = date.getFullYear();
-            const month = String(date.getMonth() + 1).padStart(2, '0');
-            const day = String(date.getDate()).padStart(2, '0');
-            return `${year}-${month}-${day}`;
-        }
-
         async function fetchWeatherData() {
+
+            function getApiDateString(date) {
+                const year = date.getFullYear();
+                const month = String(date.getMonth() + 1).padStart(2, '0');
+                const day = String(date.getDate()).padStart(2, '0');
+                return `${year}-${month}-${day}`;
+            }
+            
             const model = modelSelect.value;
-            loadingDiv.style.visibility = 'visible';
-            windGrid.innerHTML = '';
-            chartSection.style.display = 'none';
 
             const dateStr = getApiDateString(currentDate);
             // Ajout du paramètre &daily=sunrise,sunset
             const url = `https://api.open-meteo.com/v1/forecast?latitude=${currentLat}&longitude=${currentLon}&hourly=${windSpeedVars},${windDirVars},${tempVars},${dewVars},temperature_2m,dewpoint_2m,precipitation,cloud_cover_low,cloud_cover_mid,cloud_cover_high&daily=sunrise,sunset&models=${model}&start_date=${dateStr}&end_date=${dateStr}&timezone=Europe%2FParis`;
             
+            loadingDiv.style.visibility = 'visible';
+            windGrid.innerHTML = '';
+            chartSection.style.display = 'none';
+
             try {
                 const response = await fetch(url);
                 const data = await response.json();
@@ -769,7 +666,7 @@
                 }
                 
                 renderGrid(globalWeatherData);
-                drawSondage(selectedHourIndex, false);
+                drawSounding(selectedHourIndex, false);
 
             } catch (error) {
                 console.error("Erreur API :", error);
@@ -778,702 +675,6 @@
                 loadingDiv.style.visibility = 'hidden';
             }
         }        
-
-        // Fonctions de rendu du tableau et du graphique
-        // --------------------------------------------------------------------------------------------------------------------------------------------
-        function getWindColorClass(speed) {
-            if (speed < appConfig.windLight) return 'wind-light';
-            if (speed < appConfig.windMod) return 'wind-mod';
-            if (speed < appConfig.windStrong) return 'wind-strong';
-            if (speed < appConfig.windGale) return 'wind-gale';
-            return 'wind-hurricane'; 
-        }
-
-        function centerTable() {
-            const container = document.querySelector('.grid-container');
-            const table = document.getElementById('wind-grid');
-            if (container && table) {
-                const scrollPos = (table.offsetWidth - container.clientWidth) / 2;
-                container.scrollLeft = scrollPos;
-            }
-        }
-
-        function renderGrid(hourlyData) {
-            windGrid.innerHTML = '';
-            const table = document.createElement('tbody');
-            const headerRow = document.createElement('tr');
-            
-            const emptyTh = document.createElement('th');
-            emptyTh.innerText = "Heure";
-            emptyTh.style.fontSize = "11px";
-            emptyTh.style.zIndex = "3"; 
-            headerRow.appendChild(emptyTh);
-
-            const visibleHourIndices = isCompactView
-                ? hourlyData.time.reduce((acc, t, i) => {
-                    const hour = new Date(t).getHours();
-                    if (compactModeHours.includes(hour)) acc.push(i);
-                    return acc;
-                }, [])
-                : Array.from({ length: 24 }, (_, i) => i);
-            
-            visibleHourIndices.forEach(i => {
-                const th = document.createElement('th');
-                const date = new Date(hourlyData.time[i]);
-                const hourStr = `${date.getHours()}h`;
-                
-                th.innerText = hourStr;
-                th.className = 'hour-header';
-                th.id = `hour-header-${i}`; 
-                
-                // --- Vérification Nuit / Jour ---
-                if (globalDailyData && globalDailyData.sunrise && globalDailyData.sunset) {
-                    const sunriseTime = new Date(globalDailyData.sunrise[0]).getTime();
-                    const sunsetTime = new Date(globalDailyData.sunset[0]).getTime();
-                    const hourTime = date.getTime();
-                    console.log(`Lever du soleil: ${globalDailyData.sunrise[0]}, Coucher du soleil: ${globalDailyData.sunset[0]}`);
-                    
-                    // Si l'heure est strictement avant le lever ou à partir du coucher du soleil
-                    if (hourTime < sunriseTime || hourTime >= sunsetTime) {
-                        th.classList.add('night-hour');
-                    }
-                }
-                
-                th.onclick = () => drawSondage(i, true);
-                headerRow.appendChild(th);
-            });
-            table.appendChild(headerRow);
-
-            const thermalTops = [];      
-            const exactThermalTops = []; 
-
-            for (let i = 0; i < 24; i++) {
-                let currentTopIdx = activeLevels.length - 1; 
-                let exactAlt = Math.round(globalElevation);
-                let isCloudCapped = false; 
-                
-                if (hourlyData.temperature_2m && hourlyData.temperature_2m[i] !== undefined) {
-                    let tBase = hourlyData.temperature_2m[i];
-                    let tdBase = hourlyData.dewpoint_2m[i]; 
-                    let zBase = globalElevation;
-                    let tParcelBase = tBase + appConfig.parcelOffset; 
-                    
-                    // Formule d'approximation du plafond nuageux : zBase + (tBase - tdBase) * 125
-                    let cloudBaseAlt = zBase + Math.max(0, (tParcelBase - tdBase) * 125);
-                    
-                    // 1. Préparer le profil de l'environnement pour cette heure spécifique
-                    const reversedLevels = [...activeLevels].reverse();
-                    const levelDataArray = reversedLevels.map(l => getLevelData(l, i, hourlyData));
-                    let envData = reversedLevels.map((level, idx) => ({
-                        z: level.z,
-                        hpa: levelDataArray[idx].hpa,
-                        t: levelDataArray[idx].temp
-                    }));
-
-                    function getEnvAtZForHour(z) {
-                        let l1 = [...envData].reverse().find(d => d.z <= z);
-                        let l2 = envData.find(d => d.z >= z);
-                        if (!l1) return l2 || envData[0];
-                        if (!l2) return l1;
-                        if (l1.z === l2.z) return l1;
-                        let ratio = (z - l1.z) / (l2.z - l1.z);
-                        return { 
-                            hpa: l1.hpa + ratio * (l2.hpa - l1.hpa), 
-                            t: l1.t + ratio * (l2.t - l1.t) 
-                        };
-                    }
-
-                    // 2. Simuler l'ascension de la particule exactement comme dans l'émagramme
-                    let pT = tParcelBase;
-                    let maxZ = envData[envData.length - 1].z;
-                    exactAlt = zBase;
-
-                    for (let currZ = zBase + 20; currZ <= maxZ; currZ += 20) {
-                        let isCloud = currZ >= cloudBaseAlt;
-                        let envAtZ = getEnvAtZForHour(currZ);
-                        let lapse;
-                        
-                        if (isCloud) {
-                            const Tk = pT + 273.15;
-                            const es = 6.112 * Math.exp((17.67 * pT) / (pT + 243.5));
-                            const ws = 0.622 * es / (envAtZ.hpa - es);
-                            const L = 2501000 - 2370 * pT;
-                            const num = 1 + (L * ws) / (287.05 * Tk);
-                            const den = 1 + (0.622 * L * L * ws) / (1004 * 287.05 * Tk * Tk);
-                            lapse = -(9.80665 / 1004) * (num / den);
-                        } else {
-                            lapse = -0.0098;
-                        }
-                        
-                        pT += lapse * 20;
-                        
-                        // Entraînement (dilution de 1% tous les 20m)
-                        const entrainment = 0.01; 
-                        pT = pT * (1 - entrainment) + envAtZ.t * entrainment;
-
-                        exactAlt = currZ;
-                        
-                        if (pT <= envAtZ.t) {
-                            break; 
-                        }
-                    }
-
-                    // 3. Bloquer le plafond exploitable à la base du nuage s'il y rentre
-                    if (exactAlt > cloudBaseAlt) {
-                        exactAlt = Math.max(cloudBaseAlt, zBase); 
-                        isCloudCapped = true;
-                    }
-                    
-                    currentTopIdx = activeLevels.findIndex(l => l.z <= exactAlt);
-                    if(currentTopIdx === -1) currentTopIdx = activeLevels.length - 1;
-                }
-                
-                thermalTops.push(currentTopIdx);
-                exactThermalTops.push({ alt: Math.round(exactAlt), cloud: isCloudCapped });
-            }
-
-            const topRow = document.createElement('tr');
-            const thTop = document.createElement('th');
-            thTop.className = 'y-axis';
-            thTop.innerText = 'Plafond (m)';
-            thTop.style.color = '#e74c3c';
-            topRow.appendChild(thTop);
-
-            visibleHourIndices.forEach(i => {
-                const td = document.createElement('td');
-                td.dataset.hour = i;
-                const ceilData = exactThermalTops[i];
-                
-                if (ceilData.alt > globalElevation + 50) {
-                    const cloudIcon = ceilData.cloud ? ' <span style="font-size:10px;" title="Bloqué par les nuages">☁️</span>' : '<div style="color: #00dbff">⬆</div>';
-                    td.innerHTML = `<div style="color: #e74c3c; font-weight: bold; font-size: 13px;">${ceilData.alt}${cloudIcon}</div>`;
-                } else {
-                    td.innerHTML = `<div style="color: #999; font-size: 11px;"></div>`;
-                }
-                td.style.backgroundColor = '#fdf2f0'; 
-                topRow.appendChild(td);
-            });
-            table.appendChild(topRow);
-
-            const visibleLevels = activeLevels;
-
-            visibleLevels.forEach(level => {
-                const row = document.createElement('tr');
-                const thY = document.createElement('th');
-                thY.className = 'y-axis';
-                thY.innerText = level.alt;
-                
-                if (level.isSurface) {
-                    thY.style.color = '#2980b9';
-                    thY.style.fontWeight = 'bold';
-                    row.style.borderBottom = '2px solid #2980b9';
-                }
-                row.appendChild(thY);
-
-                const levelIndex = activeLevels.indexOf(level);
-
-                visibleHourIndices.forEach(i => {
-                    const td = document.createElement('td');
-                    td.dataset.hour = i;
-                    const data = getLevelData(level, i, hourlyData);
-                    
-                    if (data.windSpeed === null || data.windSpeed === undefined) {
-                        td.innerText = "-";
-                        row.appendChild(td);
-                        return;
-                    }
-
-                    const speed = Math.round(data.windSpeed);
-                    const direction = data.windDir;
-                    const temp = data.temp;
-                    const dew = data.dew;
-                    let isCloudy = false;
-
-                    // --- À remplacer dans renderGrid ---
-                    if (temp !== null && dew !== null) {
-                        const rh = getRelativeHumidity(temp, dew);
-                        
-                        // Modèle empirique de couverture nuageuse basé sur l'HR
-                        // Si HR < 80% -> 0% de nuage
-                        // Si HR approche 100% -> couverture maximale
-                        let cloudCoverPercent = 0;
-                        if (rh >= 80) {
-                            cloudCoverPercent = (rh - 80) * 5; // Mise à l'échelle pour l'opacité visuelle
-                            if (cloudCoverPercent > 100) cloudCoverPercent = 100;
-                        }
-
-                        if (cloudCoverPercent > 0) {
-                            // On utilise le pourcentage calculé pour gérer l'opacité du gris
-                            td.style.backgroundColor = `rgba(170, 180, 190, ${cloudCoverPercent / 100})`;
-                            isCloudy = true;
-                            if (cloudCoverPercent > 50) {
-                                td.style.color = 'white'; // Texte en blanc si le nuage est très dense
-                            }
-                        } else {
-                            td.style.backgroundColor = 'transparent';
-                        }
-                    }
-
-                    if (levelIndex === thermalTops[i]) {
-                        td.style.boxShadow = 'inset 0 -4px 0 #e74c3c';
-                        if (isCloudy) td.style.color = 'white'; 
-                    }
-
-                    if (isNaN(speed)) {
-                        td.innerHTML = "-";
-                    } else {
-                        const colorClass = getWindColorClass(speed);
-                        td.innerHTML = `
-                            <div class="cell-content ${colorClass}">
-                                <span class="arrow" style="transform: rotate(${direction}deg);">↓</span>
-                                <span>${speed}</span>
-                            </div>
-                        `;
-                    }
-                    row.appendChild(td);
-                });
-                table.appendChild(row);
-            });
-
-            // --- NOUVELLES LIGNES : COUVERTURE NUAGEUSE ---
-            // const cloudRows = [
-            //     { key: 'cloud_cover_low', label: '☁️ Bas (%)', data: hourlyData.cloud_cover_low },
-            //     { key: 'cloud_cover_mid', label: '☁️ Moy (%)', data: hourlyData.cloud_cover_mid },
-            //     { key: 'cloud_cover_high', label: '☁️ Hauts (%)', data: hourlyData.cloud_cover_high }
-            // ];
-
-            // cloudRows.forEach(cloudLayer => {
-            //     const tr = document.createElement('tr');
-            //     const th = document.createElement('th');
-            //     th.className = 'y-axis';
-            //     th.innerText = cloudLayer.label;
-            //     tr.appendChild(th);
-
-            //     visibleHourIndices.forEach(i => {
-            //         const td = document.createElement('td');
-            //         const val = cloudLayer.data ? cloudLayer.data[i] : 0;
-                    
-            //         if (val > 0) {
-            //             td.innerText = val;
-            //             td.style.fontSize = '11px';
-            //             td.style.fontWeight = 'bold';
-            //             td.style.backgroundColor = `rgba(170, 180, 190, ${val / 100})`;
-            //             if (val > 50) td.style.color = 'white';
-            //         } else {
-            //             td.innerText = '';
-            //         }
-            //         tr.appendChild(td);
-            //     });
-            //     table.appendChild(tr);
-            // });
-            // --- FIN DES LIGNES NUAGEUSES ---
-
-            const rainRow = document.createElement('tr');
-            const thRain = document.createElement('th');
-            thRain.className = 'y-axis';
-            thRain.innerText = '💧 mm';
-            rainRow.appendChild(thRain);
-
-            visibleHourIndices.forEach(i => {
-                const td = document.createElement('td');
-                td.dataset.hour = i;
-                const precip = hourlyData.precipitation ? hourlyData.precipitation[i] : 0;
-                if (precip > 0) td.innerHTML = `<div style="color: #3498db; font-weight: bold; font-size: 12px;">${precip}</div>`;
-                else td.innerHTML = "";
-                rainRow.appendChild(td);
-            });
-            table.appendChild(rainRow);
-
-            windGrid.appendChild(table);
-
-            const chosenHourIndex = visibleHourIndices.includes(selectedHourIndex)
-                ? selectedHourIndex : visibleHourIndices[0];
-            const chosenDate = new Date(hourlyData.time[chosenHourIndex]);
-
-            setTimeout(centerTable, 0);
-        }
-
-        // --- NOUVELLE FONCTION DE DESSIN DE L'ÉMAGRAMME ---
-        function drawSondage(hourIndex, autoScroll = true) {
-            const hourStr = `${hourIndex}h`;
-            selectedHourIndex = hourIndex;
-            chartSection.style.display = 'block';
-            chartTitle.innerText = `Profil à ${hourStr}`;
-
-            document.querySelectorAll('.hour-header').forEach(el => el.classList.remove('active'));
-            const activeHeader = document.getElementById(`hour-header-${hourIndex}`);
-            if (activeHeader) activeHeader.classList.add('active');
-
-            // --- NOUVEAU : Encadrement visuel de la colonne ---
-            document.querySelectorAll('#wind-grid td.active-col').forEach(el => el.classList.remove('active-col'));
-            document.querySelectorAll(`#wind-grid td[data-hour="${hourIndex}"]`).forEach(el => el.classList.add('active-col'));
-
-            const reversedLevels = [...activeLevels].reverse();
-            const levelDataArray = reversedLevels.map(l => getLevelData(l, hourIndex, globalWeatherData));
-            
-            let envData = reversedLevels.map((level, i) => ({
-                z: level.z,
-                hpa: levelDataArray[i].hpa,
-                t: levelDataArray[i].temp,
-                td: levelDataArray[i].dew
-            }));
-
-            function getEnvAtZ(z) {
-                let l1 = [...envData].reverse().find(d => d.z <= z);
-                let l2 = envData.find(d => d.z >= z);
-                if (!l1) return l2 || envData[0];
-                if (!l2) return l1;
-                if (l1.z === l2.z) return l1;
-                let ratio = (z - l1.z) / (l2.z - l1.z);
-                return {
-                    z: z,
-                    hpa: l1.hpa + ratio * (l2.hpa - l1.hpa),
-                    t: l1.t + ratio * (l2.t - l1.t),
-                    td: l1.td + ratio * (l2.td - l1.td)
-                };
-            }
-
-            const zBase = globalElevation;
-            const tBase = globalWeatherData.temperature_2m[hourIndex];
-            const tdBase = globalWeatherData.dewpoint_2m[hourIndex];
-            const tParcelBase = (tBase !== undefined && tBase !== null) ? tBase + appConfig.parcelOffset : null;
-            
-            let cloudBaseAlt = zBase + Math.max(0, (tParcelBase - tdBase) * 125);
-            let cloudZone = null; 
-            let parcelPath = [];
-            
-            // On déclare ceilingZ ici pour qu'il soit accessible au plugin du graphique
-            let ceilingZ = zBase; 
-
-            if (tParcelBase !== null) {
-                let pT = tParcelBase;
-                let maxZ = envData[envData.length - 1].z;
-                
-                parcelPath.push({ z: zBase, t: pT, hpa: getEnvAtZ(zBase).hpa });
-                
-                for (let currZ = zBase + 20; currZ <= maxZ; currZ += 20) {
-                    let isCloud = currZ >= cloudBaseAlt;
-                    let envAtZ = getEnvAtZ(currZ);
-                    let lapse;
-                    
-                    if (isCloud) {
-                        // Calcul dynamique du gradient pseudo-adiabatique humide
-                        const Tk = pT + 273.15; // Température en Kelvin
-                        const es = 6.112 * Math.exp((17.67 * pT) / (pT + 243.5)); // Pression de vapeur saturante
-                        const ws = 0.622 * es / (envAtZ.hpa - es); // Rapport de mélange
-                        const L = 2501000 - 2370 * pT; // Chaleur latente de vaporisation
-                        
-                        const num = 1 + (L * ws) / (287.05 * Tk);
-                        const den = 1 + (0.622 * L * L * ws) / (1004 * 287.05 * Tk * Tk);
-                        
-                        lapse = -(9.80665 / 1004) * (num / den); // Résultat exact en °C/m
-                    } else {
-                        lapse = -0.0098; // Gradient adiabatique sec
-                    }
-                    
-                    pT += lapse * 20;
-                    
-                    // --- AJOUT DE L'ENTRAÎNEMENT (DILUTION DU THERMIQUE) ---
-                    // On intègre 1% d'air ambiant à la particule tous les 20m.
-                    // Cela détruit progressivement l'excédent de température (flottabilité).
-                    const entrainment = 0.01; 
-                    pT = pT * (1 - entrainment) + envAtZ.t * entrainment;
-                    // --------------------------------------------------------
-
-                    parcelPath.push({ z: currZ, t: pT, hpa: envAtZ.hpa });
-                    ceilingZ = currZ; 
-                    
-                    if (pT <= envAtZ.t) {
-                        break; 
-                    }
-                }
-
-                if (ceilingZ > cloudBaseAlt + 20) {
-                    cloudZone = [cloudBaseAlt, ceilingZ];
-                }
-            }
-
-            // Calcul de la pression à la base du graphique pour aligner la grille et les données
-            const zBottom = Math.floor(globalElevation / 500) * 500;
-            const pBottom = getEnvAtZ(zBottom).hpa;
-
-            const skew = appConfig.skewFactor;
-            function applySkew(t, hpa) {
-                if (t === null || hpa === null) return null;
-                return skew === 0 ? t : t + (pBottom - hpa) * skew;
-            }
-
-            const envPoints = envData.map(d => ({ x: applySkew(d.t, d.hpa), y: d.z, t: d.t })).filter(d => d.x !== null);
-            const dewPoints = envData.map(d => ({ x: applySkew(d.td, d.hpa), y: d.z })).filter(d => d.x !== null);
-            const parcelChartPoints = parcelPath.map(p => ({ x: applySkew(p.t, p.hpa), y: p.z })).filter(d => d.x !== null);
-
-            const canvas = document.getElementById('sondageChart');
-            // Force la destruction de tout graphique Chart.js attaché à ce canvas
-            const existingChart = Chart.getChart(canvas);
-            if (existingChart) {
-                existingChart.destroy();
-            }
-            const ctx = canvas.getContext('2d');
-            
-            const datasets = [
-                {
-                    label: 'Température (°C)',
-                    data: envPoints,
-                    borderColor: '#333',
-                    backgroundColor: '#333',
-                    borderWidth: 2,
-                    tension: 0,
-                    pointRadius: 0, 
-                    pointHitRadius: 10,
-                    segment: {
-                        borderColor: ctx => {
-                            // On sécurise l'accès aux données interpolées par Chart.js
-                            if (!ctx.p0 || !ctx.p1 || !ctx.p0.parsed || !ctx.p1.parsed) return '#333';
-                            
-                            const z0 = ctx.p0.parsed.y;
-                            const z1 = ctx.p1.parsed.y;
-                            
-                            // On recalcule la température brute d'origine via notre fonction
-                            const env0 = getEnvAtZ(z0);
-                            const env1 = getEnvAtZ(z1);
-                            
-                            if (!env0 || !env1 || env0.t === undefined || env1.t === undefined) return '#333';
-
-                            const dz = z1 - z0;
-                            const dt = env0.t - env1.t;
-                            if (dz <= 0) return '#333';
-
-                            // Calcul du gradient thermique (°C / 100m)
-                            const lapseRate = (dt / dz) * 100;
-                            
-                            if (lapseRate >= appConfig.lapse5) return lapseRateColor.lapse5; // Violet
-                            if (lapseRate >= appConfig.lapse4) return lapseRateColor.lapse4; // Rouge
-                            if (lapseRate >= appConfig.lapse3) return lapseRateColor.lapse3; // Orange
-                            if (lapseRate >= appConfig.lapse2) return lapseRateColor.lapse2; // Jaune
-                            if (lapseRate >= appConfig.lapse1) return lapseRateColor.lapse1; // Vert
-                            return '#000000'; // Noir (< 0.6)
-                        }
-                    }
-                }
-            ];
-
-            if (!isCompactView) {
-                // On ajoute la Parcelle uniquement en mode complet
-                datasets.push({
-                    label: 'Parcelle (Sèche/Humide)',
-                    data: parcelChartPoints,
-                    borderColor: '#f39c12',
-                    backgroundColor: '#f39c12',
-                    borderWidth: 1,
-                    tension: 0,
-                    pointRadius: 0,
-                    borderDash: [5, 2],
-                    pointHitRadius: 10
-                });
-
-                // On ajoute le Point de Rosée uniquement en mode complet
-                datasets.push({
-                    label: 'Pt Rosée (°C)',
-                    data: dewPoints,
-                    borderColor: '#3498db',
-                    backgroundColor: '#3498db',
-                    borderWidth: 2,
-                    tension: 0,
-                    pointRadius: 0,
-                    pointHitRadius: 10
-                });
-            }
-
-            sondageChartInstance = new Chart(ctx, {
-                type: 'line',
-                data: { datasets },
-                options: {
-                    indexAxis: 'y',
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    scales: {
-                        x: {
-                            type: 'linear',
-                            position: 'bottom',
-                            grid: { display: false },
-                            ticks: { font: { size: 10 } }
-                        },
-                        y: {
-                            type: 'linear',
-                            position: 'left',
-                            min: Math.floor(globalElevation / 500) * 500,
-                            ticks: {
-                                stepSize: 500,
-                                font: { size: 10 },
-                                callback: function(value) { return value + "m"; }
-                            }
-                        }
-                    },
-                    plugins: {
-                        legend: { labels: { boxWidth: 10, font: { size: 11 } }, display: true, position: 'bottom' },
-                        tooltip: {
-                            callbacks: {
-                                label: function(context) {
-                                    const yVal = context.parsed.y;
-                                    let envAtZ = getEnvAtZ(yVal);
-                                    let rawTemp = context.parsed.x; 
-                                    const skew = appConfig.skewFactor;
-                                    const hpa = envAtZ.hpa;
-                                    // Utilisation de pBottom pour inverser la déformation proprement
-                                    const unskewed = skew === 0 ? rawTemp : rawTemp - (pBottom - hpa) * skew;
-                                    return `${context.dataset.label}: ${unskewed.toFixed(1)}°C à ${Math.round(yVal)}m`;
-                                }
-                            }
-                        }
-                    }
-                },
-                plugins: [
-                    {
-                        id: 'cloudZonePlugin',
-                        beforeDraw: (chart) => {
-                            const { ctx, chartArea, scales: { x, y } } = chart; // Ajout du 'x' ici
-                            if (!chartArea) return;
-
-                            // --- NOUVEAU : Dessiner la grille de température inclinée (Isothermes) ---
-                            const skew = appConfig.skewFactor;
-                            ctx.save();
-                            ctx.strokeStyle = '#eee'; // Couleur identique à la grille par défaut
-                            ctx.lineWidth = 1;
-                            
-                            const zBottom = y.min;
-                            const envBottom = getEnvAtZ(zBottom);
-                            const pBottom = envBottom.hpa;
-
-                            // On parcourt chaque "tick" (étiquette de l'axe X) pour tracer sa ligne
-                            x.ticks.forEach(tick => {
-                                const xTickValue = tick.value;
-                                ctx.beginPath();
-                                
-                                // On trace la ligne de bas en haut (tous les 200m pour suivre la courbe de pression)
-                                for (let z = zBottom; z <= y.max; z += 200) {
-                                    const envZ = getEnvAtZ(z);
-                                    // Décalage X proportionnel à la baisse de pression
-                                    const xVal = xTickValue + (pBottom - envZ.hpa) * skew;
-                                    const px = x.getPixelForValue(xVal);
-                                    const py = y.getPixelForValue(z);
-                                    
-                                    if (z === zBottom) ctx.moveTo(px, py);
-                                    else ctx.lineTo(px, py);
-                                }
-                                
-                                // Point final pour joindre exactement le plafond du graphique
-                                const envMax = getEnvAtZ(y.max);
-                                const xValMax = xTickValue + (pBottom - envMax.hpa) * skew;
-                                ctx.lineTo(x.getPixelForValue(xValMax), y.getPixelForValue(y.max));
-                                
-                                ctx.stroke();
-                            });
-                            ctx.restore();
-                            // --- FIN NOUVEAU ---
-
-                            // Vérifie si le thermique décolle vraiment (au moins 50m au-dessus du sol)
-                            let hasThermal = ceilingZ > zBase + 50;
-                            // Le plafond exploitable est le plus bas entre le sommet du thermique et la base du nuage
-                            let plafondAlt = Math.min(ceilingZ, cloudBaseAlt);
-
-                            // 1. Tracer la ligne du Plafond Thermique (uniquement s'il y a un thermique)
-                            if (hasThermal) {
-                                const yPlafond = y.getPixelForValue(plafondAlt);
-                                ctx.save();
-                                if (yPlafond >= chartArea.top && yPlafond <= chartArea.bottom) {
-                                    ctx.beginPath();
-                                    ctx.setLineDash([5, 5]);
-                                    ctx.moveTo(chartArea.left, yPlafond);
-                                    ctx.lineTo(chartArea.right, yPlafond);
-                                    ctx.strokeStyle = '#e74c3c'; // Ligne rouge comme dans le tableau
-                                    ctx.lineWidth = 1.5;
-                                    ctx.stroke();
-                                    
-                                    ctx.fillStyle = '#e74c3c';
-                                    ctx.font = 'bold 11px sans-serif';
-                                    ctx.fillText('Plafond', chartArea.left, yPlafond + 8);
-                                }
-                                ctx.restore();
-                            }
-
-                            // 2. Dessiner le nuage (zone grise) SI la particule dépasse le LCL
-                            // 2. Dessiner le nuage (zone grise) SI la particule dépasse le LCL
-                            if (cloudZone && cloudZone.length === 2) {
-                                const yBottom = y.getPixelForValue(cloudZone[0]); 
-                                const yTop = y.getPixelForValue(cloudZone[1]);    
-                                
-                                ctx.save();
-                                ctx.fillStyle = 'rgba(170, 180, 190, 0.4)';
-                                ctx.fillRect(chartArea.left, yTop, chartArea.right - chartArea.left, yBottom - yTop);
-                                
-                                ctx.fillStyle = '#444';
-                                ctx.font = 'bold 60px sans-serif';
-                                ctx.fillText('☁️', (chartArea.right - chartArea.left) / 2, yTop + Math.max(15, (yBottom - yTop)/2));
-                                ctx.restore();
-                            }
-                        }, // <--- Attention à bien ajouter cette virgule
-                        
-                        // --- NOUVEAU : Affichage des valeurs de gradients sur la droite ---
-                        afterDraw: (chart) => {
-                            const { ctx, chartArea, scales: { y } } = chart;
-                            if (!chartArea) return;
-
-                            ctx.save();
-                            ctx.textAlign = 'right';
-                            ctx.textBaseline = 'middle';
-                            ctx.font = 'bold 11px sans-serif';
-                            ctx.lineJoin = 'round';
-
-                            // On parcourt les segments de bas en haut
-                            for (let i = 0; i < envData.length - 1; i++) {
-                                const d0 = envData[i];
-                                const d1 = envData[i+1];
-                                const dz = d1.z - d0.z;
-                                const dt = d0.t - d1.t; 
-                                
-                                if (dz > 0) {
-                                    const lapseRate = (dt / dz) * 100;
-                                    
-                                    // Détermination de la couleur selon vos seuils
-                                    let color = '#000000';
-                                    if (lapseRate >= appConfig.lapse5) color = lapseRateColor.lapse5;
-                                    else if (lapseRate >= appConfig.lapse4) color = lapseRateColor.lapse4;
-                                    else if (lapseRate >= appConfig.lapse3) color = lapseRateColor.lapse3;
-                                    else if (lapseRate >= appConfig.lapse2) color = lapseRateColor.lapse2;
-                                    else if (lapseRate >= appConfig.lapse1) color = lapseRateColor.lapse1;
-
-                                    // Calcul de la position verticale (au milieu du segment)
-                                    const py0 = y.getPixelForValue(d0.z);
-                                    const py1 = y.getPixelForValue(d1.z);
-                                    const pyMid = (py0 + py1) / 2;
-                                    
-                                    const text = lapseRate.toFixed(2);
-                                    
-                                    // Contour blanc de protection pour la lisibilité
-                                    ctx.lineWidth = 3;
-                                    ctx.strokeStyle = 'rgba(255,255,255,0.8)';
-                                    ctx.strokeText(text, chartArea.right - 5, pyMid);
-                                    
-                                    // Texte coloré
-                                    ctx.fillStyle = color;
-                                    ctx.fillText(text, chartArea.right - 5, pyMid);
-                                }
-                            }
-                            ctx.restore();
-                        }
-                    }
-                ]
-            });
-
-            if (autoScroll) { 
-                // On force le défilement uniquement à l'intérieur du panneau droit
-                const rightPanel = document.getElementById('right-panel');
-                rightPanel.scrollTo({ 
-                    top: rightPanel.scrollHeight, 
-                    behavior: 'smooth' 
-                }); 
-            }
-        }
 
         // Fonctions de redimensionnement du panneau droit
         // --------------------------------------------------------------------------------------------------------------------------------------------
@@ -1545,7 +746,6 @@
 
         map.on('click', setGpsPositionByMapClick);        
 
-
         // Right panel initializations
         // --------------------------------------------------------------------------------------------------------------------------------------------
         
@@ -1563,7 +763,7 @@
             if (globalWeatherData) {
                 updateActiveLevels();
                 renderGrid(globalWeatherData);
-                drawSondage(selectedHourIndex, false);
+                drawSounding(selectedHourIndex, false);
             }
         });
 
