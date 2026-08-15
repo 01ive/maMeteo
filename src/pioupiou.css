@@ -10,7 +10,7 @@
     box-shadow: 0 4px 15px rgba(0,0,0,0.3); 
     overflow-y: auto;
     max-height: 95vh;
-    min-width: 400px;
+    min-width: 380px;
 }
 
 @media (max-width: 768px) {

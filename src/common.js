@@ -72,3 +72,32 @@ function updateActiveLevels() {
         ? activeLevels.filter(level => compactModeRows.includes(level.alt) || level.isSurface)
         : activeLevels;
 }
+
+function getEnvAtZ(envData, z) {
+    let l1 = [...envData].reverse().find(d => d.z <= z);
+    let l2 = envData.find(d => d.z >= z);
+    if (!l1) return l2 || envData[0];
+    if (!l2) return l1;
+    if (l1.z === l2.z) return l1;
+    let ratio = (z - l1.z) / (l2.z - l1.z);
+    return {
+        z: z,
+        hpa: l1.hpa + ratio * (l2.hpa - l1.hpa),
+        t: l1.t + ratio * (l2.t - l1.t),
+        td: l1.td + ratio * (l2.td - l1.td)
+    };
+}
+
+function formatEnvDataForHour(hourIndex) {
+    const reversedLevels = [...activeLevels].reverse();
+    const levelDataArray = reversedLevels.map(l => getLevelData(l, hourIndex, globalWeatherData));
+    
+    let envData = reversedLevels.map((level, i) => ({
+        z: level.z,
+        hpa: levelDataArray[i].hpa,
+        t: levelDataArray[i].temp,
+        td: levelDataArray[i].dew
+    }));
+
+    return envData;
+}

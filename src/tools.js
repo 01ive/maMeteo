@@ -23,3 +23,67 @@ function getCardinalDirection(angle) {
     const directions = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW', 'N'];
     return directions[Math.round(angle / 45)];
 }
+
+function getCloudBaseAltitude(zBase, tBase, tBaseDew) {
+    if (tBase === null || tBaseDew === null || tBase === undefined || tBaseDew === undefined) return null;
+    return (zBase + Math.max(0, (tBase - tBaseDew) * 125));
+}
+
+function calculateParcelPath(zBase, tBase, tBaseDew, envData) {
+    let cloudBaseAlt = getCloudBaseAltitude(zBase, tBase, tBaseDew);
+    let cloudZone = null;
+    let parcelPath = [];
+    let ceilingZ = zBase; 
+    
+    if (tBase !== null) {
+        let pT = tBase;
+        let maxZ = envData[envData.length - 1].z;
+        
+        parcelPath.push({ z: zBase, t: pT, hpa: getEnvAtZ(envData, zBase).hpa });
+        
+        for (let currZ = zBase + 20; currZ <= maxZ; currZ += 20) {
+            let isCloud = currZ >= cloudBaseAlt;
+            let envAtZ = getEnvAtZ(envData, currZ);
+            let lapse;
+            
+            if (isCloud) {
+                // Calcul dynamique du gradient pseudo-adiabatique humide
+                const Tk = pT + 273.15; // Température en Kelvin
+                const es = 6.112 * Math.exp((17.67 * pT) / (pT + 243.5)); // Pression de vapeur saturante
+                const ws = 0.622 * es / (envAtZ.hpa - es); // Rapport de mélange
+                const L = 2501000 - 2370 * pT; // Chaleur latente de vaporisation
+                
+                const num = 1 + (L * ws) / (287.05 * Tk);
+                const den = 1 + (0.622 * L * L * ws) / (1004 * 287.05 * Tk * Tk);
+                
+                lapse = -(9.80665 / 1004) * (num / den); // Résultat exact en °C/m
+            } else {
+                lapse = -0.0098; // Gradient adiabatique sec
+            }
+            
+            pT += lapse * 20;
+            
+            // --- AJOUT DE L'ENTRAÎNEMENT (DILUTION DU THERMIQUE) ---
+            // On intègre 1% d'air ambiant à la particule tous les 20m.
+            // Cela détruit progressivement l'excédent de température (flottabilité).
+            const entrainment = 0.01; 
+            pT = pT * (1 - entrainment) + envAtZ.t * entrainment;
+            // --------------------------------------------------------
+
+            parcelPath.push({ z: currZ, t: pT, hpa: envAtZ.hpa });
+            ceilingZ = currZ; 
+            
+            if (pT <= envAtZ.t) {
+                break; 
+            }
+        }
+
+        if (ceilingZ > cloudBaseAlt + 20) {
+            cloudZone = [cloudBaseAlt, ceilingZ];
+        } else {
+            cloudZone = [ceilingZ, null];
+        }
+    }
+
+    return { cloudZone, parcelPath };
+}

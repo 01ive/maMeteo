@@ -82,90 +82,23 @@ function renderGrid(hourlyData) {
 
     const thermalTops = [];      
     const exactThermalTops = []; 
-
-    for (let i = 0; i < 24; i++) {
-        let currentTopIdx = activeLevels.length - 1; 
-        let exactAlt = Math.round(globalElevation);
-        let isCloudCapped = false; 
+    
+    for (let i = 0; i < 24; i++) {        
+        // Calculate parcel path and cloud zone based on the selected hour
+        const envData = formatEnvDataForHour(i);
         
-        if (hourlyData.temperature_2m && hourlyData.temperature_2m[i] !== undefined) {
-            let tBase = hourlyData.temperature_2m[i];
-            let tdBase = hourlyData.dewpoint_2m[i]; 
-            let zBase = globalElevation;
-            let tParcelBase = tBase + appConfig.parcelOffset; 
-            
-            // Formule d'approximation du plafond nuageux : zBase + (tBase - tdBase) * 125
-            let cloudBaseAlt = zBase + Math.max(0, (tParcelBase - tdBase) * 125);
-            
-            // 1. Préparer le profil de l'environnement pour cette heure spécifique
-            const reversedLevels = [...activeLevels].reverse();
-            const levelDataArray = reversedLevels.map(l => getLevelData(l, i, hourlyData));
-            let envData = reversedLevels.map((level, idx) => ({
-                z: level.z,
-                hpa: levelDataArray[idx].hpa,
-                t: levelDataArray[idx].temp
-            }));
+        const parcel = calculateParcelPath(globalElevation, hourlyData.temperature_2m[i] + appConfig.parcelOffset, hourlyData.dewpoint_2m[i], envData);
+        const parcelPath = parcel.parcelPath;
+        const cloudBaseAlt = parcel.cloudZone[0];
+        const ceilingZ = parcel.cloudZone[1];
 
-            function getEnvAtZForHour(z) {
-                let l1 = [...envData].reverse().find(d => d.z <= z);
-                let l2 = envData.find(d => d.z >= z);
-                if (!l1) return l2 || envData[0];
-                if (!l2) return l1;
-                if (l1.z === l2.z) return l1;
-                let ratio = (z - l1.z) / (l2.z - l1.z);
-                return { 
-                    hpa: l1.hpa + ratio * (l2.hpa - l1.hpa), 
-                    t: l1.t + ratio * (l2.t - l1.t) 
-                };
-            }
+        const isCloudCapped = ceilingZ !== null;
 
-            // 2. Simuler l'ascension de la particule exactement comme dans l'émagramme
-            let pT = tParcelBase;
-            let maxZ = envData[envData.length - 1].z;
-            exactAlt = zBase;
+        let currentTopIdx = activeLevels.findIndex(l => l.z <= cloudBaseAlt);
+        if(currentTopIdx === -1) currentTopIdx = activeLevels.length - 1;
 
-            for (let currZ = zBase + 20; currZ <= maxZ; currZ += 20) {
-                let isCloud = currZ >= cloudBaseAlt;
-                let envAtZ = getEnvAtZForHour(currZ);
-                let lapse;
-                
-                if (isCloud) {
-                    const Tk = pT + 273.15;
-                    const es = 6.112 * Math.exp((17.67 * pT) / (pT + 243.5));
-                    const ws = 0.622 * es / (envAtZ.hpa - es);
-                    const L = 2501000 - 2370 * pT;
-                    const num = 1 + (L * ws) / (287.05 * Tk);
-                    const den = 1 + (0.622 * L * L * ws) / (1004 * 287.05 * Tk * Tk);
-                    lapse = -(9.80665 / 1004) * (num / den);
-                } else {
-                    lapse = -0.0098;
-                }
-                
-                pT += lapse * 20;
-                
-                // Entraînement (dilution de 1% tous les 20m)
-                const entrainment = 0.01; 
-                pT = pT * (1 - entrainment) + envAtZ.t * entrainment;
-
-                exactAlt = currZ;
-                
-                if (pT <= envAtZ.t) {
-                    break; 
-                }
-            }
-
-            // 3. Bloquer le plafond exploitable à la base du nuage s'il y rentre
-            if (exactAlt > cloudBaseAlt) {
-                exactAlt = Math.max(cloudBaseAlt, zBase); 
-                isCloudCapped = true;
-            }
-            
-            currentTopIdx = activeLevels.findIndex(l => l.z <= exactAlt);
-            if(currentTopIdx === -1) currentTopIdx = activeLevels.length - 1;
-        }
-        
         thermalTops.push(currentTopIdx);
-        exactThermalTops.push({ alt: Math.round(exactAlt), cloud: isCloudCapped });
+        exactThermalTops.push({ alt: Math.round(cloudBaseAlt), cloud: isCloudCapped });
     }
 
     const topRow = document.createElement('tr');

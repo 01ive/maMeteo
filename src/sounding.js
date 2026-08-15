@@ -8,98 +8,23 @@ function drawSounding(hourIndex, autoScroll = true) {
     const activeHeader = document.getElementById(`hour-header-${hourIndex}`);
     if (activeHeader) activeHeader.classList.add('active');
 
-    // --- NOUVEAU : Encadrement visuel de la colonne ---
     document.querySelectorAll('#wind-grid td.active-col').forEach(el => el.classList.remove('active-col'));
     document.querySelectorAll(`#wind-grid td[data-hour="${hourIndex}"]`).forEach(el => el.classList.add('active-col'));
 
-    const reversedLevels = [...activeLevels].reverse();
-    const levelDataArray = reversedLevels.map(l => getLevelData(l, hourIndex, globalWeatherData));
-    
-    let envData = reversedLevels.map((level, i) => ({
-        z: level.z,
-        hpa: levelDataArray[i].hpa,
-        t: levelDataArray[i].temp,
-        td: levelDataArray[i].dew
-    }));
-
-    function getEnvAtZ(z) {
-        let l1 = [...envData].reverse().find(d => d.z <= z);
-        let l2 = envData.find(d => d.z >= z);
-        if (!l1) return l2 || envData[0];
-        if (!l2) return l1;
-        if (l1.z === l2.z) return l1;
-        let ratio = (z - l1.z) / (l2.z - l1.z);
-        return {
-            z: z,
-            hpa: l1.hpa + ratio * (l2.hpa - l1.hpa),
-            t: l1.t + ratio * (l2.t - l1.t),
-            td: l1.td + ratio * (l2.td - l1.td)
-        };
-    }
+    // Calculate parcel path and cloud zone based on the selected hour
+    const envData = formatEnvDataForHour(hourIndex);
 
     const zBase = globalElevation;
     const tBase = globalWeatherData.temperature_2m[hourIndex];
     const tdBase = globalWeatherData.dewpoint_2m[hourIndex];
     const tParcelBase = (tBase !== undefined && tBase !== null) ? tBase + appConfig.parcelOffset : null;
-    
-    let cloudBaseAlt = zBase + Math.max(0, (tParcelBase - tdBase) * 125);
-    let cloudZone = null; 
-    let parcelPath = [];
-    
-    // On déclare ceilingZ ici pour qu'il soit accessible au plugin du graphique
-    let ceilingZ = zBase; 
 
-    if (tParcelBase !== null) {
-        let pT = tParcelBase;
-        let maxZ = envData[envData.length - 1].z;
-        
-        parcelPath.push({ z: zBase, t: pT, hpa: getEnvAtZ(zBase).hpa });
-        
-        for (let currZ = zBase + 20; currZ <= maxZ; currZ += 20) {
-            let isCloud = currZ >= cloudBaseAlt;
-            let envAtZ = getEnvAtZ(currZ);
-            let lapse;
-            
-            if (isCloud) {
-                // Calcul dynamique du gradient pseudo-adiabatique humide
-                const Tk = pT + 273.15; // Température en Kelvin
-                const es = 6.112 * Math.exp((17.67 * pT) / (pT + 243.5)); // Pression de vapeur saturante
-                const ws = 0.622 * es / (envAtZ.hpa - es); // Rapport de mélange
-                const L = 2501000 - 2370 * pT; // Chaleur latente de vaporisation
-                
-                const num = 1 + (L * ws) / (287.05 * Tk);
-                const den = 1 + (0.622 * L * L * ws) / (1004 * 287.05 * Tk * Tk);
-                
-                lapse = -(9.80665 / 1004) * (num / den); // Résultat exact en °C/m
-            } else {
-                lapse = -0.0098; // Gradient adiabatique sec
-            }
-            
-            pT += lapse * 20;
-            
-            // --- AJOUT DE L'ENTRAÎNEMENT (DILUTION DU THERMIQUE) ---
-            // On intègre 1% d'air ambiant à la particule tous les 20m.
-            // Cela détruit progressivement l'excédent de température (flottabilité).
-            const entrainment = 0.01; 
-            pT = pT * (1 - entrainment) + envAtZ.t * entrainment;
-            // --------------------------------------------------------
+    const parcel = calculateParcelPath(zBase, tParcelBase, tdBase, envData);
+    const parcelPath = parcel.parcelPath;
+    const cloudBaseAlt = parcel.cloudZone[0];
+    const cloudEndAlt = parcel.cloudZone[1];
 
-            parcelPath.push({ z: currZ, t: pT, hpa: envAtZ.hpa });
-            ceilingZ = currZ; 
-            
-            if (pT <= envAtZ.t) {
-                break; 
-            }
-        }
-
-        if (ceilingZ > cloudBaseAlt + 20) {
-            cloudZone = [cloudBaseAlt, ceilingZ];
-        }
-    }
-
-    // Calcul de la pression à la base du graphique pour aligner la grille et les données
-    const zBottom = Math.floor(globalElevation / 500) * 500;
-    const pBottom = getEnvAtZ(zBottom).hpa;
+    const pBottom = getEnvAtZ(envData, zBase).hpa;
 
     const skew = appConfig.skewFactor;
     function applySkew(t, hpa) {
@@ -138,8 +63,8 @@ function drawSounding(hourIndex, autoScroll = true) {
                     const z1 = ctx.p1.parsed.y;
                     
                     // On recalcule la température brute d'origine via notre fonction
-                    const env0 = getEnvAtZ(z0);
-                    const env1 = getEnvAtZ(z1);
+                    const env0 = getEnvAtZ(envData, z0);
+                    const env1 = getEnvAtZ(envData, z1);
                     
                     if (!env0 || !env1 || env0.t === undefined || env1.t === undefined) return '#333';
 
@@ -219,7 +144,7 @@ function drawSounding(hourIndex, autoScroll = true) {
                     callbacks: {
                         label: function(context) {
                             const yVal = context.parsed.y;
-                            let envAtZ = getEnvAtZ(yVal);
+                            let envAtZ = getEnvAtZ(envData, yVal);
                             let rawTemp = context.parsed.x; 
                             const skew = appConfig.skewFactor;
                             const hpa = envAtZ.hpa;
@@ -245,7 +170,7 @@ function drawSounding(hourIndex, autoScroll = true) {
                     ctx.lineWidth = 1;
                     
                     const zBottom = y.min;
-                    const envBottom = getEnvAtZ(zBottom);
+                    const envBottom = getEnvAtZ(envData, zBottom);
                     const pBottom = envBottom.hpa;
 
                     // On parcourt chaque "tick" (étiquette de l'axe X) pour tracer sa ligne
@@ -255,7 +180,7 @@ function drawSounding(hourIndex, autoScroll = true) {
                         
                         // On trace la ligne de bas en haut (tous les 200m pour suivre la courbe de pression)
                         for (let z = zBottom; z <= y.max; z += 200) {
-                            const envZ = getEnvAtZ(z);
+                            const envZ = getEnvAtZ(envData, z);
                             // Décalage X proportionnel à la baisse de pression
                             const xVal = xTickValue + (pBottom - envZ.hpa) * skew;
                             const px = x.getPixelForValue(xVal);
@@ -266,7 +191,7 @@ function drawSounding(hourIndex, autoScroll = true) {
                         }
                         
                         // Point final pour joindre exactement le plafond du graphique
-                        const envMax = getEnvAtZ(y.max);
+                        const envMax = getEnvAtZ(envData, y.max);
                         const xValMax = xTickValue + (pBottom - envMax.hpa) * skew;
                         ctx.lineTo(x.getPixelForValue(xValMax), y.getPixelForValue(y.max));
                         
@@ -276,9 +201,9 @@ function drawSounding(hourIndex, autoScroll = true) {
                     // --- FIN NOUVEAU ---
 
                     // Vérifie si le thermique décolle vraiment (au moins 50m au-dessus du sol)
-                    let hasThermal = ceilingZ > zBase + 50;
+                    let hasThermal = cloudBaseAlt > zBase + 50;
                     // Le plafond exploitable est le plus bas entre le sommet du thermique et la base du nuage
-                    let plafondAlt = Math.min(ceilingZ, cloudBaseAlt);
+                    let plafondAlt = cloudBaseAlt;
 
                     // 1. Tracer la ligne du Plafond Thermique (uniquement s'il y a un thermique)
                     if (hasThermal) {
@@ -301,10 +226,9 @@ function drawSounding(hourIndex, autoScroll = true) {
                     }
 
                     // 2. Dessiner le nuage (zone grise) SI la particule dépasse le LCL
-                    // 2. Dessiner le nuage (zone grise) SI la particule dépasse le LCL
-                    if (cloudZone && cloudZone.length === 2) {
-                        const yBottom = y.getPixelForValue(cloudZone[0]); 
-                        const yTop = y.getPixelForValue(cloudZone[1]);    
+                    if (cloudEndAlt) {
+                        const yBottom = y.getPixelForValue(cloudBaseAlt); 
+                        const yTop = y.getPixelForValue(cloudEndAlt);    
                         
                         ctx.save();
                         ctx.fillStyle = 'rgba(170, 180, 190, 0.4)';
