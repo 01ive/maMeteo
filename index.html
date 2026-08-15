@@ -172,11 +172,6 @@
         }
         #toggle-view-btn:hover { background-color: #e8f4f8; border-color: #2980b9; }
 
-        .header, .grid-container, .chart-container {
-            flex-shrink: 0;
-            width: 100%;
-        }
-
         .header { 
             display: flex; 
             justify-content: center; 
@@ -230,58 +225,7 @@
             width: 100%;
         }
 
-        .grid-container {
-            overflow-x: auto;
-            background: white;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-            min-width: 100px;
-        }
-        
-        .grid-container::-webkit-scrollbar { height: 8px; }
-        .grid-container::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 4px; }
-        .grid-container::-webkit-scrollbar-thumb { background: #c1c1c1; border-radius: 4px; }
-        .grid-container::-webkit-scrollbar-thumb:hover { background: #a8a8a8; }
-
-        table { font-variant-numeric: tabular-nums; border-collapse: collapse; text-align: center; table-layout: fixed; width: auto; margin: 0 auto; }
-        th, td { border: 0px solid var(--border-color); padding: 2px; width: 40px; min-width: 40px; height: 40px; transition: background-color 0.3s; }
-        th { background-color: #f8f9fa; font-weight: 600; font-size: 12px; position: sticky; left: 0; z-index: 2; }
-
-        .chart-container { background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); display: none; min-width: 260px; }
-        
-        .hour-header { cursor: pointer; color: #2980b9; text-decoration: underline; transition: all 0.2s; position: static; z-index: 1; }
-        .hour-header:hover { background-color: #e8f4f8; }
-        .hour-header.active { 
-            background-color: #2980b9; color: white; text-decoration: none; 
-            border-top: 1px solid #333 !important; border-left: 1px solid #333 !important; border-right: 1px solid #333 !important;
-        }
-        
-        .hour-header.night-hour { background-color: #111; color: #ccc; }
-        .hour-header.night-hour:hover { background-color: #333; color: #fff; }
-        .hour-header.night-hour.active { 
-            background-color: #2980b9; color: white; 
-            border-top: 1px solid #333 !important; border-left: 1px solid #333 !important; border-right: 1px solid #333 !important;
-        }
-
-        /* --- Bordures pour le corps de la colonne sélectionnée --- */
-        td.active-col {
-            border-left: 1px solid #333 !important;
-            border-right: 1px solid #333 !important;
-        }
-        /* Ferme le cadre sur la toute dernière ligne du tableau */
-        tr:last-child td.active-col {
-            border-bottom: 1px solid #333 !important;
-        }
-
-        .y-axis { text-align: right; padding-right: 10px; white-space: nowrap; background-color: #f8f9fa; }
-        .cell-content { display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 11px; font-weight: bold; text-shadow: 0px 0px 2px rgba(255,255,255,0.8); }
-        .arrow { display: inline-block; font-size: 16px; transition: transform 0.3s ease; }
-                
         #loading { position: absolute; top: -20px; left: 10px; font-style: italic; color: #666; height: 20px; font-size: 13px; }
-
-        .chart-container { background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); display: none; }
-        #chart-title { text-align: center; margin-top: 0; font-size: 15px; color: #2c3e50; margin-bottom: 15px; }
-        .canvas-wrapper { position: relative; height: 450px; width: 100%; } /* Hauteur augmentée pour la proportionnalité linéaire */
 
         /* --- Styles spécifiques au Mode Simple sur Bureau : Hauteur synchronisée stricte --- */
         body.compact-view .grid-chart-layout {
@@ -290,12 +234,12 @@
             align-items: stretch; /* Étire le conteneur du graphique à la hauteur du tableau */
             width: 100%; 
         }
-        
+
         body.compact-view .grid-container {
             flex: 0 0 auto;
             width: max-content; 
         }
-        
+
         body.compact-view .chart-container {
             flex: 1;
             min-width: 0;       
@@ -308,6 +252,7 @@
             margin: 0 0 15px 0; 
             height: 18px;       /* Hauteur fixe pour le titre */
         }
+
 
         body.compact-view .canvas-wrapper {
             position: absolute;
@@ -354,6 +299,7 @@
                 flex: 0 0 auto; 
                 overflow-y: hidden; /* Empêche iOS/Android de bloquer le scroll vertical tactile */
             }
+
             body.compact-view .chart-container { 
                 flex: 1; 
                 min-width: 0; 
@@ -361,6 +307,7 @@
                 position: relative; /* Devient le point de repère pour le graphique absolu */
                 display: block;     /* On annule flexbox à l'intérieur pour éviter les conflits */
             }
+            
             body.compact-view #chart-title { 
                 font-size: 13px; 
                 margin: 0 0 10px 0; 
