@@ -58,7 +58,7 @@ function calculateParcelPath(zBase, tBase, tBaseDew, envData) {
                 
                 lapse = -(9.80665 / 1004) * (num / den); // Résultat exact en °C/m
             } else {
-                lapse = -0.0098; // Gradient adiabatique sec
+                lapse = -0.0098; // Gradient adiabatique sec -0.0098°/m (-0.98°C/100m)
             }
             
             pT += lapse * 20;
@@ -73,6 +73,7 @@ function calculateParcelPath(zBase, tBase, tBaseDew, envData) {
             parcelPath.push({ z: currZ, t: pT, hpa: envAtZ.hpa });
             ceilingZ = currZ; 
             
+            // Si la température de la particule devient inférieure à l'environnement, la partcule arrete de s'élèver.
             if (pT <= envAtZ.t) {
                 break; 
             }
