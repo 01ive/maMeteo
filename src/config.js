@@ -56,7 +56,7 @@ function saveConfig() {
     closeConfig();
     
     if (globalWeatherData) {
-        renderGrid(globalWeatherData);
+        renderGrid();
         drawSounding(selectedHourIndex, false);
     }
 }

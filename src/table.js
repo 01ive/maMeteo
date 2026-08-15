@@ -34,7 +34,7 @@ function getWindColorClass(speed) {
     return 'wind-hurricane'; 
 }
 
-function renderGrid(hourlyData) {
+function renderGrid() {
     windGrid.innerHTML = '';
     const table = document.createElement('tbody');
     const headerRow = document.createElement('tr');
@@ -46,7 +46,7 @@ function renderGrid(hourlyData) {
     headerRow.appendChild(emptyTh);
 
     const visibleHourIndices = isCompactView
-        ? hourlyData.time.reduce((acc, t, i) => {
+        ? globalWeatherData.time.reduce((acc, t, i) => {
             const hour = new Date(t).getHours();
             if (compactModeHours.includes(hour)) acc.push(i);
             return acc;
@@ -55,7 +55,7 @@ function renderGrid(hourlyData) {
     
     visibleHourIndices.forEach(i => {
         const th = document.createElement('th');
-        const date = new Date(hourlyData.time[i]);
+        const date = new Date(globalWeatherData.time[i]);
         const hourStr = `${date.getHours()}h`;
         
         th.innerText = hourStr;
@@ -87,7 +87,7 @@ function renderGrid(hourlyData) {
         // Calculate parcel path and cloud zone based on the selected hour
         const envData = formatEnvDataForHour(i);
         
-        const parcel = calculateParcelPath(globalElevation, hourlyData.temperature_2m[i] + appConfig.parcelOffset, hourlyData.dewpoint_2m[i], envData);
+        const parcel = calculateParcelPath(globalElevation, globalWeatherData.temperature_2m[i] + appConfig.parcelOffset, globalWeatherData.dewpoint_2m[i], envData);
         const parcelPath = parcel.parcelPath;
         const cloudBaseAlt = parcel.cloudZone[0];
         const ceilingZ = parcel.cloudZone[1];
@@ -144,7 +144,7 @@ function renderGrid(hourlyData) {
         visibleHourIndices.forEach(i => {
             const td = document.createElement('td');
             td.dataset.hour = i;
-            const data = getLevelData(level, i, hourlyData);
+            const data = getLevelData(level, i, globalWeatherData);
             
             if (data.windSpeed === null || data.windSpeed === undefined) {
                 td.innerText = "-";
@@ -206,9 +206,9 @@ function renderGrid(hourlyData) {
 
     // --- NOUVELLES LIGNES : COUVERTURE NUAGEUSE ---
     // const cloudRows = [
-    //     { key: 'cloud_cover_low', label: '☁️ Bas (%)', data: hourlyData.cloud_cover_low },
-    //     { key: 'cloud_cover_mid', label: '☁️ Moy (%)', data: hourlyData.cloud_cover_mid },
-    //     { key: 'cloud_cover_high', label: '☁️ Hauts (%)', data: hourlyData.cloud_cover_high }
+    //     { key: 'cloud_cover_low', label: '☁️ Bas (%)', data: globalWeatherData.cloud_cover_low },
+    //     { key: 'cloud_cover_mid', label: '☁️ Moy (%)', data: globalWeatherData.cloud_cover_mid },
+    //     { key: 'cloud_cover_high', label: '☁️ Hauts (%)', data: globalWeatherData.cloud_cover_high }
     // ];
 
     // cloudRows.forEach(cloudLayer => {
@@ -246,7 +246,7 @@ function renderGrid(hourlyData) {
     visibleHourIndices.forEach(i => {
         const td = document.createElement('td');
         td.dataset.hour = i;
-        const precip = hourlyData.precipitation ? hourlyData.precipitation[i] : 0;
+        const precip = globalWeatherData.precipitation ? globalWeatherData.precipitation[i] : 0;
         if (precip > 0) td.innerHTML = `<div style="color: #3498db; font-weight: bold; font-size: 12px;">${precip}</div>`;
         else td.innerHTML = "";
         rainRow.appendChild(td);
@@ -257,7 +257,7 @@ function renderGrid(hourlyData) {
 
     const chosenHourIndex = visibleHourIndices.includes(selectedHourIndex)
         ? selectedHourIndex : visibleHourIndices[0];
-    const chosenDate = new Date(hourlyData.time[chosenHourIndex]);
+    const chosenDate = new Date(globalWeatherData.time[chosenHourIndex]);
 
     setTimeout(centerTable, 0);
 }

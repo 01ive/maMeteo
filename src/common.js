@@ -3,6 +3,7 @@ const compactModeHours = [9, 13, 17];
 
 let isCompactView = false;
 let selectedHourIndex = null;
+let activeLevels = [];
 
 // Fonctions de rendu du tableau et du graphique
 // --------------------------------------------------------------------------------------------------------------------------------------------

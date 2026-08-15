@@ -1,3 +1,5 @@
+let soundingChartInstance = null;
+
 function drawSounding(hourIndex, autoScroll = true) {
     const hourStr = `${hourIndex}h`;
     selectedHourIndex = hourIndex;
@@ -113,7 +115,7 @@ function drawSounding(hourIndex, autoScroll = true) {
         });
     }
 
-    sondageChartInstance = new Chart(ctx, {
+    soundingChartInstance = new Chart(ctx, {
         type: 'line',
         data: { datasets },
         options: {

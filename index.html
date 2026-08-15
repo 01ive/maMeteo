@@ -324,7 +324,6 @@
             #left-panel { flex: 1 1 auto; width: 100%; height: auto; min-height: 0; }
             
             /* Le resizer devient horizontal et prend la couleur bleue de l'ancienne bordure */
-            /* Le resizer devient horizontal et prend la couleur bleue de l'ancienne bordure */
             #resizer { 
                 flex: 0 0 10px; 
                 width: 100%; 
@@ -481,26 +480,16 @@
     </div>
 
     <script>
-        const windSpeedVars = LEVELS.map(l => `windspeed_${l.hpa}hPa`).join(',');
-        const windDirVars = LEVELS.map(l => `winddirection_${l.hpa}hPa`).join(',');
-        const tempVars = LEVELS.map(l => `temperature_${l.hpa}hPa`).join(',');
-        const dewVars = LEVELS.map(l => `dewpoint_${l.hpa}hPa`).join(',');
+        // Variables globales pour stocker les données meteo
+        let globalElevation = 0;
+        let globalWeatherData = null;
+        let globalDailyData = null; // Variable pour lever/coucher du soleil
 
         // Default coordinates for Puy Mary at startup
         let currentLat = 45.109; 
         let currentLon = 2.676;
 
-        // Variable pour stocker l'heure actuelle du modèle
-        let currentHour = null; 
-
-        // Variables globales pour stocker les données meteo
-        let globalElevation = 0;
-        let globalWeatherData = null;
-        let globalDailyData = null; // Nouvelle variable pour lever/coucher du soleil
-        let sondageChartInstance = null;
-        let currentDate = new Date(); 
-        let activeLevels = [];    
-        
+        let currentDate = new Date();
         let isResizing = false;
 
         // DOM Elements
@@ -634,6 +623,10 @@
 
             const dateStr = getApiDateString(currentDate);
             // Ajout du paramètre &daily=sunrise,sunset
+            const windSpeedVars = LEVELS.map(l => `windspeed_${l.hpa}hPa`).join(',');
+            const windDirVars = LEVELS.map(l => `winddirection_${l.hpa}hPa`).join(',');
+            const tempVars = LEVELS.map(l => `temperature_${l.hpa}hPa`).join(',');
+            const dewVars = LEVELS.map(l => `dewpoint_${l.hpa}hPa`).join(',');
             const url = `https://api.open-meteo.com/v1/forecast?latitude=${currentLat}&longitude=${currentLon}&hourly=${windSpeedVars},${windDirVars},${tempVars},${dewVars},temperature_2m,dewpoint_2m,precipitation,cloud_cover_low,cloud_cover_mid,cloud_cover_high&daily=sunrise,sunset&models=${model}&start_date=${dateStr}&end_date=${dateStr}&timezone=Europe%2FParis`;
             
             loadingDiv.style.visibility = 'visible';
@@ -665,7 +658,7 @@
                     selectedHourIndex = currentDate.getHours();
                 }
                 
-                renderGrid(globalWeatherData);
+                renderGrid();
                 drawSounding(selectedHourIndex, false);
 
             } catch (error) {
@@ -762,7 +755,7 @@
             toggleViewBtn.innerText = isCompactView ? '24h' : '3h';
             if (globalWeatherData) {
                 updateActiveLevels();
-                renderGrid(globalWeatherData);
+                renderGrid();
                 drawSounding(selectedHourIndex, false);
             }
         });
