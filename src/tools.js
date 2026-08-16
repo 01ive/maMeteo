@@ -1,3 +1,6 @@
+
+import {getEnvAtZ} from './common.js';
+
 // Fonctions de calculs météorologiques
 // --------------------------------------------------------------------------------------------------------------------------------------------
 function getRelativeHumidity(t, td) {
@@ -31,7 +34,7 @@ function getCloudBaseAltitude(zBase, tBase, tBaseDew) {
 
 function calculateParcelPath(zBase, tBase, tBaseDew, envData) {
     let cloudBaseAlt = getCloudBaseAltitude(zBase, tBase, tBaseDew);
-    let cloudZone = null;
+    let cloudZone = [null, null];
     let parcelPath = [];
     let ceilingZ = zBase; 
     
@@ -88,3 +91,5 @@ function calculateParcelPath(zBase, tBase, tBaseDew, envData) {
 
     return { cloudZone, parcelPath };
 }
+
+export { getRelativeHumidity, interpolateValue, interpolateDirection, getCardinalDirection, getCloudBaseAltitude, calculateParcelPath };

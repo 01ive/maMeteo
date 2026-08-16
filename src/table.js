@@ -1,3 +1,9 @@
+import {global} from './global.js'
+import { appConfig } from './config.js'
+import { formatEnvDataForHour, activeLevels, getLevelData, compactModeHours } from './common.js';
+import { calculateParcelPath, getRelativeHumidity } from './tools.js';
+import { drawSounding } from './sounding.js';
+
 // Définition des niveaux de pression et d'altitude pour le tableau et le graphique
 const LEVELS = [
     { alt: "11800m", hpa: "200" },
@@ -14,9 +20,10 @@ const LEVELS = [
     { alt: "0m",     hpa: "1000" }
 ];
 
+const windGrid = document.getElementById('wind-grid');
+
 // Fonctions de rendu du tableau et du graphique
 // --------------------------------------------------------------------------------------------------------------------------------------------
-
 function centerTable() {
     const container = document.querySelector('.grid-container');
     const table = document.getElementById('wind-grid');
@@ -45,8 +52,8 @@ function renderGrid() {
     emptyTh.style.zIndex = "3"; 
     headerRow.appendChild(emptyTh);
 
-    const visibleHourIndices = isCompactView
-        ? globalWeatherData.time.reduce((acc, t, i) => {
+    const visibleHourIndices = global.isCompactView
+        ? global.weatherData.time.reduce((acc, t, i) => {
             const hour = new Date(t).getHours();
             if (compactModeHours.includes(hour)) acc.push(i);
             return acc;
@@ -55,7 +62,7 @@ function renderGrid() {
     
     visibleHourIndices.forEach(i => {
         const th = document.createElement('th');
-        const date = new Date(globalWeatherData.time[i]);
+        const date = new Date(global.weatherData.time[i]);
         const hourStr = `${date.getHours()}h`;
         
         th.innerText = hourStr;
@@ -63,11 +70,11 @@ function renderGrid() {
         th.id = `hour-header-${i}`; 
         
         // --- Vérification Nuit / Jour ---
-        if (globalDailyData && globalDailyData.sunrise && globalDailyData.sunset) {
-            const sunriseTime = new Date(globalDailyData.sunrise[0]).getTime();
-            const sunsetTime = new Date(globalDailyData.sunset[0]).getTime();
+        if (global.dailyData && global.dailyData.sunrise && global.dailyData.sunset) {
+            const sunriseTime = new Date(global.dailyData.sunrise[0]).getTime();
+            const sunsetTime = new Date(global.dailyData.sunset[0]).getTime();
             const hourTime = date.getTime();
-            console.log(`Lever du soleil: ${globalDailyData.sunrise[0]}, Coucher du soleil: ${globalDailyData.sunset[0]}`);
+            console.log(`Lever du soleil: ${global.dailyData.sunrise[0]}, Coucher du soleil: ${global.dailyData.sunset[0]}`);
             
             // Si l'heure est strictement avant le lever ou à partir du coucher du soleil
             if (hourTime < sunriseTime || hourTime >= sunsetTime) {
@@ -87,7 +94,7 @@ function renderGrid() {
         // Calculate parcel path and cloud zone based on the selected hour
         const envData = formatEnvDataForHour(i);
         
-        const parcel = calculateParcelPath(globalElevation, globalWeatherData.temperature_2m[i] + appConfig.parcelOffset, globalWeatherData.dewpoint_2m[i], envData);
+        const parcel = calculateParcelPath(global.elevation, global.weatherData.temperature_2m[i] + appConfig.parcelOffset, global.weatherData.dewpoint_2m[i], envData);
         const parcelPath = parcel.parcelPath;
         const cloudBaseAlt = parcel.cloudZone[0];
         const ceilingZ = parcel.cloudZone[1];
@@ -113,7 +120,7 @@ function renderGrid() {
         td.dataset.hour = i;
         const ceilData = exactThermalTops[i];
         
-        if (ceilData.alt > globalElevation + 50) {
+        if (ceilData.alt > global.elevation + 50) {
             const cloudIcon = ceilData.cloud ? ' <span style="font-size:10px;" title="Bloqué par les nuages">☁️</span>' : '<div style="color: #00dbff">⬆</div>';
             td.innerHTML = `<div style="color: #e74c3c; font-weight: bold; font-size: 13px;">${ceilData.alt}${cloudIcon}</div>`;
         } else {
@@ -144,7 +151,7 @@ function renderGrid() {
         visibleHourIndices.forEach(i => {
             const td = document.createElement('td');
             td.dataset.hour = i;
-            const data = getLevelData(level, i, globalWeatherData);
+            const data = getLevelData(level, i, global.weatherData);
             
             if (data.windSpeed === null || data.windSpeed === undefined) {
                 td.innerText = "-";
@@ -206,9 +213,9 @@ function renderGrid() {
 
     // --- NOUVELLES LIGNES : COUVERTURE NUAGEUSE ---
     // const cloudRows = [
-    //     { key: 'cloud_cover_low', label: '☁️ Bas (%)', data: globalWeatherData.cloud_cover_low },
-    //     { key: 'cloud_cover_mid', label: '☁️ Moy (%)', data: globalWeatherData.cloud_cover_mid },
-    //     { key: 'cloud_cover_high', label: '☁️ Hauts (%)', data: globalWeatherData.cloud_cover_high }
+    //     { key: 'cloud_cover_low', label: '☁️ Bas (%)', data: global.weatherData.cloud_cover_low },
+    //     { key: 'cloud_cover_mid', label: '☁️ Moy (%)', data: global.weatherData.cloud_cover_mid },
+    //     { key: 'cloud_cover_high', label: '☁️ Hauts (%)', data: global.weatherData.cloud_cover_high }
     // ];
 
     // cloudRows.forEach(cloudLayer => {
@@ -246,7 +253,7 @@ function renderGrid() {
     visibleHourIndices.forEach(i => {
         const td = document.createElement('td');
         td.dataset.hour = i;
-        const precip = globalWeatherData.precipitation ? globalWeatherData.precipitation[i] : 0;
+        const precip = global.weatherData.precipitation ? global.weatherData.precipitation[i] : 0;
         if (precip > 0) td.innerHTML = `<div style="color: #3498db; font-weight: bold; font-size: 12px;">${precip}</div>`;
         else td.innerHTML = "";
         rainRow.appendChild(td);
@@ -255,9 +262,11 @@ function renderGrid() {
 
     windGrid.appendChild(table);
 
-    const chosenHourIndex = visibleHourIndices.includes(selectedHourIndex)
-        ? selectedHourIndex : visibleHourIndices[0];
-    const chosenDate = new Date(globalWeatherData.time[chosenHourIndex]);
+    const chosenHourIndex = visibleHourIndices.includes(global.selectedHourIndex)
+        ? global.selectedHourIndex : visibleHourIndices[0];
+    const chosenDate = new Date(global.weatherData.time[chosenHourIndex]);
 
     setTimeout(centerTable, 0);
 }
+
+export { LEVELS, windGrid, renderGrid, getWindColorClass, centerTable };

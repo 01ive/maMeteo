@@ -1,3 +1,6 @@
+import { getWindColorClass } from './table.js';
+import { getCardinalDirection } from './tools.js';
+
 // Fonctions des Pioupious
 // --------------------------------------------------------------------------------------------------------------------------------------------
 function openPioupiouWidget(stationId) {
@@ -16,7 +19,7 @@ function openPioupiouWidget(stationId) {
     document.body.appendChild(script);
 }
 
-async function loadPioupiouStations() {
+async function loadPioupiouStations(pioupiouLayer) {
     const API_URL = 'https://api.pioupiou.fr/v1/live/all';
     try {
         const response = await fetch(API_URL);
@@ -58,6 +61,8 @@ async function loadPioupiouStations() {
 
                 const marker = L.marker([lat, lon], { icon: pioupiouIcon }).addTo(pioupiouLayer);
 
+                window.openPioupiouWidget = openPioupiouWidget;
+
                 // Définition de la popup standard
                 // Construction du contenu de la popup avec le nom cliquable
                 const popupContent = `
@@ -82,3 +87,5 @@ async function loadPioupiouStations() {
         }
     } catch (error) { console.error("Erreur lors du chargement des balises Pioupiou :", error); }
 }
+
+export { loadPioupiouStations, openPioupiouWidget };

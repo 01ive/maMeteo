@@ -1,8 +1,16 @@
+import { global } from './global.js';
+import { formatEnvDataForHour, getEnvAtZ } from './common.js';
+import { calculateParcelPath } from './tools.js';
+import { appConfig, lapseRateColor } from './config.js';
+
+const chartTitle = document.getElementById('chart-title');
+
 let soundingChartInstance = null;
 
 function drawSounding(hourIndex, autoScroll = true) {
     const hourStr = `${hourIndex}h`;
-    selectedHourIndex = hourIndex;
+    global.selectedHourIndex = hourIndex;
+    const chartSection = document.getElementById('chart-section');
     chartSection.style.display = 'block';
     chartTitle.innerText = `Profil à ${hourStr}`;
 
@@ -16,9 +24,9 @@ function drawSounding(hourIndex, autoScroll = true) {
     // Calculate parcel path and cloud zone based on the selected hour
     const envData = formatEnvDataForHour(hourIndex);
 
-    const zBase = globalElevation;
-    const tBase = globalWeatherData.temperature_2m[hourIndex];
-    const tdBase = globalWeatherData.dewpoint_2m[hourIndex];
+    const zBase = global.elevation;
+    const tBase = global.weatherData.temperature_2m[hourIndex];
+    const tdBase = global.weatherData.dewpoint_2m[hourIndex];
     const tParcelBase = (tBase !== undefined && tBase !== null) ? tBase + appConfig.parcelOffset : null;
 
     const parcel = calculateParcelPath(zBase, tParcelBase, tdBase, envData);
@@ -88,7 +96,7 @@ function drawSounding(hourIndex, autoScroll = true) {
         }
     ];
 
-    if (!isCompactView) {
+    if (!global.isCompactView) {
         // On ajoute la Parcelle uniquement en mode complet
         datasets.push({
             label: 'Parcelle (Sèche/Humide)',
@@ -132,7 +140,7 @@ function drawSounding(hourIndex, autoScroll = true) {
                 y: {
                     type: 'linear',
                     position: 'left',
-                    min: Math.floor(globalElevation / 500) * 500,
+                    min: Math.floor(global.elevation / 500) * 500,
                     ticks: {
                         stepSize: 500,
                         font: { size: 10 },
@@ -304,3 +312,5 @@ function drawSounding(hourIndex, autoScroll = true) {
         }); 
     }
 }
+
+export { drawSounding, soundingChartInstance };

@@ -1,3 +1,7 @@
+import { global } from './global.js';
+import { drawSounding } from './sounding.js';
+import { renderGrid } from './table.js'
+
 // Default configuration values
 const lapseRateColor = {
     lapse1: '#2ecc71', // Vert
@@ -35,10 +39,10 @@ function openConfig() {
     document.getElementById('cfg-lapse5').value = appConfig.lapse5;
     document.getElementById('cfg-skew').value = appConfig.skewFactor;
     document.getElementById('cfg-offset').value = appConfig.parcelOffset;
-    configModal.style.display = 'block';
+    document.getElementById('config-modal').style.display = 'block';
 }
 
-function closeConfig() { configModal.style.display = 'none'; }
+function closeConfig() { document.getElementById('config-modal').style.display = 'none'; }
 
 function saveConfig() {
     appConfig.windLight = parseFloat(document.getElementById('cfg-wind-light').value);
@@ -55,8 +59,16 @@ function saveConfig() {
     
     closeConfig();
     
-    if (globalWeatherData) {
+    if (global.weatherData) {
         renderGrid();
-        drawSounding(selectedHourIndex, false);
+        drawSounding(global.selectedHourIndex, false);
     }
 }
+
+export {
+    lapseRateColor,
+    appConfig,
+    openConfig,
+    closeConfig,
+    saveConfig
+};

@@ -1,8 +1,10 @@
+import { LEVELS } from './table.js';
+import { global } from './global.js';
+import { interpolateValue, interpolateDirection } from './tools.js';
+
 const compactModeRows = ["0m", "1000m", "2000m", "3000m", "4000m", "5500m"];
 const compactModeHours = [9, 13, 17];
 
-let isCompactView = false;
-let selectedHourIndex = null;
 let activeLevels = [];
 
 // Fonctions de rendu du tableau et du graphique
@@ -18,8 +20,8 @@ function getLevelData(level, hourIndex, hourlyData) {
         };
     }
     
-    let levelAbove = [...LEVELS].reverse().find(l => parseInt(l.alt) > globalElevation);
-    let levelBelow = LEVELS.find(l => parseInt(l.alt) <= globalElevation);
+    let levelAbove = [...LEVELS].reverse().find(l => parseInt(l.alt) > global.elevation);
+    let levelBelow = LEVELS.find(l => parseInt(l.alt) <= global.elevation);
     
     if (!levelAbove || !levelBelow) {
         let closest = levelAbove || levelBelow || LEVELS[LEVELS.length - 1];
@@ -48,11 +50,11 @@ function getLevelData(level, hourIndex, hourlyData) {
     let pB = parseInt(levelBelow.hpa);
 
     return {
-        temp: interpolateValue(globalElevation, zA, tA, zB, tB),
-        dew: interpolateValue(globalElevation, zA, dewA, zB, dewB),
-        windSpeed: interpolateValue(globalElevation, zA, dspA, zB, dspB),
-        windDir: interpolateDirection(globalElevation, zA, dirA, zB, dirB),
-        hpa: interpolateValue(globalElevation, zA, pA, zB, pB)
+        temp: interpolateValue(global.elevation, zA, tA, zB, tB),
+        dew: interpolateValue(global.elevation, zA, dewA, zB, dewB),
+        windSpeed: interpolateValue(global.elevation, zA, dspA, zB, dspB),
+        windDir: interpolateDirection(global.elevation, zA, dirA, zB, dirB),
+        hpa: interpolateValue(global.elevation, zA, pA, zB, pB)
     };
 }
 
@@ -60,16 +62,16 @@ function updateActiveLevels() {
     activeLevels = [];
 
     LEVELS.forEach(l => {
-        if (parseInt(l.alt) > globalElevation) {
+        if (parseInt(l.alt) > global.elevation) {
             activeLevels.push({ ...l, z: parseInt(l.alt) });
         }
     });
     activeLevels.push({ 
-        alt: Math.round(globalElevation) + "m (Sol)", 
+        alt: Math.round(global.elevation) + "m (Sol)", 
         isSurface: true, 
-        z: globalElevation 
+        z: global.elevation 
     });
-    activeLevels = isCompactView
+    activeLevels = global.isCompactView
         ? activeLevels.filter(level => compactModeRows.includes(level.alt) || level.isSurface)
         : activeLevels;
 }
@@ -91,7 +93,7 @@ function getEnvAtZ(envData, z) {
 
 function formatEnvDataForHour(hourIndex) {
     const reversedLevels = [...activeLevels].reverse();
-    const levelDataArray = reversedLevels.map(l => getLevelData(l, hourIndex, globalWeatherData));
+    const levelDataArray = reversedLevels.map(l => getLevelData(l, hourIndex, global.weatherData));
     
     let envData = reversedLevels.map((level, i) => ({
         z: level.z,
@@ -102,3 +104,13 @@ function formatEnvDataForHour(hourIndex) {
 
     return envData;
 }
+
+export {
+    compactModeRows,
+    compactModeHours,
+    activeLevels,
+    getLevelData,
+    updateActiveLevels,
+    getEnvAtZ,
+    formatEnvDataForHour
+};

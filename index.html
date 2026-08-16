@@ -10,20 +10,20 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://www.openwindmap.org/js/widget-v1.js"></script>
 
-    <script src="src/pioupiou.js"></script>
+    <script type="module" src="src/pioupiou.js"></script>
     <link rel="stylesheet" href="src/pioupiou.css"/>
 
-    <script src="src/config.js"></script>
+    <script type="module" src="src/config.js"></script>
     <link rel="stylesheet" href="src/config.css"/>
 
-    <script src="src/table.js"></script>
+    <script type="module" src="src/table.js"></script>
     <link rel="stylesheet" href="src/table.css"/>
 
-    <script src="src/sounding.js"></script>
+    <script type="module" src="src/sounding.js"></script>
     <link rel="stylesheet" href="src/sounding.css"/>
 
-    <script src="src/tools.js"></script>
-    <script src="src/common.js"></script>
+    <script type="module" src="src/tools.js"></script>
+    <script type="module" src="src/common.js"></script>
 
     <style>
         :root {
@@ -426,11 +426,13 @@
         </div>
     </div>
 
-    <script>
-        // Variables globales pour stocker les données meteo
-        let globalElevation = 0;
-        let globalWeatherData = null;
-        let globalDailyData = null; // Variable pour lever/coucher du soleil
+    <script type="module">
+        import { appConfig, openConfig, closeConfig, saveConfig } from './src/config.js';
+        import { loadPioupiouStations } from './src/pioupiou.js'
+        import { LEVELS, windGrid, renderGrid } from './src/table.js'
+        import { drawSounding } from './src/sounding.js'
+        import { updateActiveLevels } from './src/common.js'
+        import { global } from './src/global.js'
 
         // Default coordinates for Puy Mary at startup
         let currentLat = 45.109; 
@@ -441,7 +443,6 @@
 
         // DOM Elements
         const configBtn = document.getElementById('config-btn');
-        const configModal = document.getElementById('config-modal');
         const btnSave = document.getElementById('cfg-save');
         const btnCancel = document.getElementById('cfg-cancel');
 
@@ -451,10 +452,8 @@
         const geolocBtn = document.getElementById('geoloc-btn');
 
         const modelSelect = document.getElementById('model-select');
-        const windGrid = document.getElementById('wind-grid');
         const loadingDiv = document.getElementById('loading');
         const chartSection = document.getElementById('chart-section');
-        const chartTitle = document.getElementById('chart-title');
         
         const dateDisplay = document.getElementById('current-date-display');
         const btnPrev = document.getElementById('btn-prev');
@@ -593,20 +592,20 @@
                     return;
                 }
 
-                globalElevation = data.elevation || 0; 
-                globalWeatherData = data.hourly;
-                globalDailyData = data.daily; // Sauvegarde des données journalières
+                global.elevation = data.elevation || 0; 
+                global.weatherData = data.hourly;
+                global.dailyData = data.daily; // Sauvegarde des données journalières
 
-                document.getElementById('location-altitude').innerText = `\n${Math.round(globalElevation)}m`;
+                document.getElementById('location-altitude').innerText = `\n${Math.round(global.elevation)}m`;
                 
                 updateActiveLevels();
 
-                if (selectedHourIndex === null) {
-                    selectedHourIndex = currentDate.getHours();
+                if (global.selectedHourIndex === null) {
+                    global.selectedHourIndex = currentDate.getHours();
                 }
                 
                 renderGrid();
-                drawSounding(selectedHourIndex, false);
+                drawSounding(global.selectedHourIndex, false);
 
             } catch (error) {
                 console.error("Erreur API :", error);
@@ -681,7 +680,7 @@
         let marker = L.marker([currentLat, currentLon]).addTo(map);
         let pioupiouLayer = L.layerGroup().addTo(map);       
 
-        loadPioupiouStations();
+        loadPioupiouStations(pioupiouLayer);
         setInterval(loadPioupiouStations, 5 * 60 * 1000);
 
         map.on('click', setGpsPositionByMapClick);        
@@ -697,13 +696,13 @@
         btnNext.addEventListener('click', () => { currentDate.setDate(currentDate.getDate() + 1); updateDateDisplay(); fetchWeatherData(); });
         modelSelect.addEventListener('change', () => { fetchWeatherData(); });
         toggleViewBtn.addEventListener('click', () => {
-            isCompactView = !isCompactView;
-            document.body.classList.toggle('compact-view', isCompactView);
-            toggleViewBtn.innerText = isCompactView ? '24h' : '3h';
-            if (globalWeatherData) {
+            global.isCompactView = !global.isCompactView;
+            document.body.classList.toggle('compact-view', global.isCompactView);
+            toggleViewBtn.innerText = global.isCompactView ? '24h' : '3h';
+            if (global.weatherData) {
                 updateActiveLevels();
                 renderGrid();
-                drawSounding(selectedHourIndex, false);
+                drawSounding(global.selectedHourIndex, false);
             }
         });
 
