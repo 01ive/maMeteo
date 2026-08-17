@@ -431,7 +431,7 @@
         import { loadPioupiouStations } from './src/pioupiou.js'
         import { LEVELS, windGrid, renderGrid } from './src/table.js'
         import { drawSounding } from './src/sounding.js'
-        import { updateActiveLevels } from './src/common.js'
+        import { common, updateActiveLevels } from './src/common.js'
         import { global } from './src/global.js'
 
         // Default coordinates for Puy Mary at startup
@@ -692,9 +692,9 @@
         btnNext.addEventListener('click', () => { currentDate.setDate(currentDate.getDate() + 1); updateDateDisplay(); fetchWeatherData(); });
         modelSelect.addEventListener('change', () => { fetchWeatherData(); });
         toggleViewBtn.addEventListener('click', () => {
-            global.isCompactView = !global.isCompactView;
-            document.body.classList.toggle('compact-view', global.isCompactView);
-            toggleViewBtn.innerText = global.isCompactView ? '24h' : '3h';
+            common.isCompactView = !common.isCompactView;
+            document.body.classList.toggle('compact-view', common.isCompactView);
+            toggleViewBtn.innerText = common.isCompactView ? '24h' : '3h';
             if (global.weatherData) {
                 updateActiveLevels();
                 renderGrid();

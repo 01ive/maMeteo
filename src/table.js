@@ -1,6 +1,6 @@
 import {global} from './global.js'
 import { appConfig } from './config.js'
-import { formatEnvDataForHour, activeLevels, getLevelData, compactModeHours } from './common.js';
+import { formatEnvDataForHour, common, getLevelData, compactModeHours } from './common.js';
 import { calculateParcelPath, getRelativeHumidity } from './tools.js';
 import { drawSounding } from './sounding.js';
 
@@ -55,7 +55,7 @@ function renderGrid() {
     emptyTh.style.zIndex = "3"; 
     headerRow.appendChild(emptyTh);
 
-    const visibleHourIndices = global.isCompactView
+    const visibleHourIndices = common.isCompactView
         ? global.weatherData.time.reduce((acc, t, i) => {
             const hour = new Date(t).getHours();
             if (compactModeHours.includes(hour)) acc.push(i);
@@ -108,8 +108,8 @@ function renderGrid() {
 
         const isCloudCapped = ceilingZ !== null;
 
-        let currentTopIdx = activeLevels.findIndex(l => l.z <= cloudBaseAlt);
-        if(currentTopIdx === -1) currentTopIdx = activeLevels.length - 1;
+        let currentTopIdx = common.activeLevels.findIndex(l => l.z <= cloudBaseAlt);
+        if(currentTopIdx === -1) currentTopIdx = common.activeLevels.length - 1;
 
         thermalTops.push(currentTopIdx);
         exactThermalTops.push({ alt: Math.round(cloudBaseAlt), cloud: isCloudCapped });
@@ -138,7 +138,7 @@ function renderGrid() {
     });
     table.appendChild(topRow);
 
-    const visibleLevels = activeLevels;
+    const visibleLevels = common.activeLevels;
 
     visibleLevels.forEach(level => {
         const row = document.createElement('tr');
@@ -153,7 +153,7 @@ function renderGrid() {
         }
         row.appendChild(thY);
 
-        const levelIndex = activeLevels.indexOf(level);
+        const levelIndex = common.activeLevels.indexOf(level);
 
         visibleHourIndices.forEach(i => {
             const td = document.createElement('td');

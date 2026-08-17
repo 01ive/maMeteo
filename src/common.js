@@ -5,7 +5,10 @@ import { interpolateValue, interpolateDirection } from './tools.js';
 const compactModeRows = ["0m", "1000m", "2000m", "3000m", "4000m", "5500m"];
 const compactModeHours = [9, 13, 17];
 
-let activeLevels = [];
+const common = {
+    activeLevels: [],
+    isCompactView: false
+};
 
 // Fonctions de rendu du tableau et du graphique
 // --------------------------------------------------------------------------------------------------------------------------------------------
@@ -59,21 +62,21 @@ function getLevelData(level, hourIndex, hourlyData) {
 }
 
 function updateActiveLevels() {
-    activeLevels = [];
+    common.activeLevels = [];
 
     LEVELS.forEach(l => {
         if (parseInt(l.alt) > global.elevation) {
-            activeLevels.push({ ...l, z: parseInt(l.alt) });
+            common.activeLevels.push({ ...l, z: parseInt(l.alt) });
         }
     });
-    activeLevels.push({ 
+    common.activeLevels.push({ 
         alt: Math.round(global.elevation) + "m (Sol)", 
         isSurface: true, 
         z: global.elevation 
     });
-    activeLevels = global.isCompactView
-        ? activeLevels.filter(level => compactModeRows.includes(level.alt) || level.isSurface)
-        : activeLevels;
+    common.activeLevels = common.isCompactView
+        ? common.activeLevels.filter(level => compactModeRows.includes(level.alt) || level.isSurface)
+        : common.activeLevels;
 }
 
 function getEnvAtZ(envData, z) {
@@ -92,7 +95,7 @@ function getEnvAtZ(envData, z) {
 }
 
 function formatEnvDataForHour(hourIndex) {
-    const reversedLevels = [...activeLevels].reverse();
+    const reversedLevels = [...common.activeLevels].reverse();
     const levelDataArray = reversedLevels.map(l => getLevelData(l, hourIndex, global.weatherData));
     
     let envData = reversedLevels.map((level, i) => ({
@@ -108,7 +111,7 @@ function formatEnvDataForHour(hourIndex) {
 export {
     compactModeRows,
     compactModeHours,
-    activeLevels,
+    common,
     getLevelData,
     updateActiveLevels,
     getEnvAtZ,
