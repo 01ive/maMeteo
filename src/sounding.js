@@ -2,14 +2,15 @@ import { global } from './global.js';
 import { formatEnvDataForHour, getEnvAtZ } from './common.js';
 import { calculateParcelPath } from './tools.js';
 import { appConfig, lapseRateColor } from './config.js';
+import { selectedHourIndex } from './table.js';
 
 const chartTitle = document.getElementById('chart-title');
 
 let soundingChartInstance = null;
 
-function drawSounding(hourIndex, autoScroll = true) {
+function drawSounding(autoScroll = true) {
+    const hourIndex = selectedHourIndex;
     const hourStr = `${hourIndex}h`;
-    global.selectedHourIndex = hourIndex;
     const chartSection = document.getElementById('chart-section');
     chartSection.style.display = 'block';
     chartTitle.innerText = `Profil à ${hourStr}`;

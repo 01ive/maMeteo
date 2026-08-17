@@ -22,6 +22,9 @@ const LEVELS = [
 
 const windGrid = document.getElementById('wind-grid');
 
+let currentDate = new Date();
+let selectedHourIndex = currentDate.getHours();
+
 // Fonctions de rendu du tableau et du graphique
 // --------------------------------------------------------------------------------------------------------------------------------------------
 function centerTable() {
@@ -82,7 +85,11 @@ function renderGrid() {
             }
         }
         
-        th.onclick = () => drawSounding(i, true);
+        th.onclick = () => { 
+            selectedHourIndex = i; 
+            drawSounding(); 
+        };
+
         headerRow.appendChild(th);
     });
     table.appendChild(headerRow);
@@ -269,4 +276,4 @@ function renderGrid() {
     setTimeout(centerTable, 0);
 }
 
-export { LEVELS, windGrid, renderGrid, getWindColorClass, centerTable };
+export { LEVELS, windGrid, selectedHourIndex, renderGrid, getWindColorClass, centerTable };

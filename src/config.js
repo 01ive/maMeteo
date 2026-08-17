@@ -61,7 +61,7 @@ function saveConfig() {
     
     if (global.weatherData) {
         renderGrid();
-        drawSounding(global.selectedHourIndex, false);
+        drawSounding(false);
     }
 }
 

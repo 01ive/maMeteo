@@ -599,13 +599,9 @@
                 document.getElementById('location-altitude').innerText = `\n${Math.round(global.elevation)}m`;
                 
                 updateActiveLevels();
-
-                if (global.selectedHourIndex === null) {
-                    global.selectedHourIndex = currentDate.getHours();
-                }
                 
                 renderGrid();
-                drawSounding(global.selectedHourIndex, false);
+                drawSounding(false);
 
             } catch (error) {
                 console.error("Erreur API :", error);
@@ -702,7 +698,7 @@
             if (global.weatherData) {
                 updateActiveLevels();
                 renderGrid();
-                drawSounding(global.selectedHourIndex, false);
+                drawSounding(false);
             }
         });
 
