@@ -16,7 +16,8 @@
 @media (max-width: 768px) {
     #pioupiou-widget-container {
         display: none;
-        left: 0 !important; 
+        left: 50vw !important; 
+        transform: translateX(-50%);
         top: 5px !important; 
         height: 95vh; 
         width: 95vw !important; 

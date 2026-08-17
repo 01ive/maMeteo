@@ -77,7 +77,6 @@ function renderGrid() {
             const sunriseTime = new Date(global.dailyData.sunrise[0]).getTime();
             const sunsetTime = new Date(global.dailyData.sunset[0]).getTime();
             const hourTime = date.getTime();
-            console.log(`Lever du soleil: ${global.dailyData.sunrise[0]}, Coucher du soleil: ${global.dailyData.sunset[0]}`);
             
             // Si l'heure est strictement avant le lever ou à partir du coucher du soleil
             if (hourTime < sunriseTime || hourTime >= sunsetTime) {

@@ -1,5 +1,5 @@
 import { global } from './global.js';
-import { formatEnvDataForHour, getEnvAtZ } from './common.js';
+import { common, formatEnvDataForHour, getEnvAtZ } from './common.js';
 import { calculateParcelPath } from './tools.js';
 import { appConfig, lapseRateColor } from './config.js';
 import { selectedHourIndex } from './table.js';
@@ -97,7 +97,7 @@ function drawSounding(autoScroll = true) {
         }
     ];
 
-    if (!global.isCompactView) {
+    if (!common.isCompactView) {
         // On ajoute la Parcelle uniquement en mode complet
         datasets.push({
             label: 'Parcelle (Sèche/Humide)',
@@ -247,7 +247,7 @@ function drawSounding(autoScroll = true) {
                         
                         ctx.fillStyle = '#444';
                         ctx.font = 'bold 60px sans-serif';
-                        ctx.fillText('☁️', (chartArea.right - chartArea.left) / 2, yTop + Math.max(15, (yBottom - yTop)/2));
+                        ctx.fillText('☁️', (chartArea.left + 10), yTop + Math.max(15, (yBottom - yTop)/2));
                         ctx.restore();
                     }
                 }, // <--- Attention à bien ajouter cette virgule

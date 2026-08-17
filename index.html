@@ -433,6 +433,7 @@
         import { drawSounding } from './src/sounding.js'
         import { common, updateActiveLevels } from './src/common.js'
         import { global } from './src/global.js'
+        import { fetchWeatherData } from './src/weather.js'
 
         // Default coordinates for Puy Mary at startup
         let currentLat = 45.109; 
@@ -485,7 +486,7 @@
             } catch (error) {
                 document.getElementById('location-name').innerText = "Position sélectionnée";
             }
-            fetchWeatherData();
+            updateWeatherData();
         }
 
         function getGpsLocation() {
@@ -537,7 +538,7 @@
                     document.getElementById('coords-display').innerText = `${currentLat.toFixed(3)}°N\n${currentLon.toFixed(3)}°E`;
                     document.getElementById('location-name').innerText = result.name || result.display_name.split(',')[0];
                     
-                    fetchWeatherData();
+                    updateWeatherData();
                 } else {
                     alert("Lieu introuvable. Veuillez essayer une autre formulation.");
                 }
@@ -554,62 +555,7 @@
         function updateDateDisplay() {
             const options = { weekday: 'short', day: 'numeric', month: 'short' };
             dateDisplay.innerText = currentDate.toLocaleDateString('fr-FR', options);
-        }
-
-        async function fetchWeatherData() {
-
-            function getApiDateString(date) {
-                const year = date.getFullYear();
-                const month = String(date.getMonth() + 1).padStart(2, '0');
-                const day = String(date.getDate()).padStart(2, '0');
-                return `${year}-${month}-${day}`;
-            }
-            
-            const model = modelSelect.value;
-
-            const dateStr = getApiDateString(currentDate);
-            // Ajout du paramètre &daily=sunrise,sunset
-            const windSpeedVars = LEVELS.map(l => `windspeed_${l.hpa}hPa`).join(',');
-            const windDirVars = LEVELS.map(l => `winddirection_${l.hpa}hPa`).join(',');
-            const tempVars = LEVELS.map(l => `temperature_${l.hpa}hPa`).join(',');
-            const dewVars = LEVELS.map(l => `dewpoint_${l.hpa}hPa`).join(',');
-            const url = `https://api.open-meteo.com/v1/forecast?latitude=${currentLat}&longitude=${currentLon}&hourly=${windSpeedVars},${windDirVars},${tempVars},${dewVars},temperature_2m,dewpoint_2m,precipitation,cloud_cover_low,cloud_cover_mid,cloud_cover_high&daily=sunrise,sunset&models=${model}&start_date=${dateStr}&end_date=${dateStr}&timezone=Europe%2FParis`;
-            
-            loadingDiv.style.visibility = 'visible';
-            windGrid.innerHTML = '';
-            chartSection.style.display = 'none';
-
-            try {
-                const response = await fetch(url);
-                const data = await response.json();
-                
-                if (data.error) throw new Error(data.reason);
-
-                if (!data.hourly || !data.hourly.temperature_1000hPa || data.hourly.temperature_1000hPa.every(value => value === null)) {
-                    alert("Le modèle sélectionné ne retourne pas de données pour cette zone. Basculement sur GFS.");
-                    modelSelect.value = 'gfs_seamless';
-                    fetchWeatherData();
-                    return;
-                }
-
-                global.elevation = data.elevation || 0; 
-                global.weatherData = data.hourly;
-                global.dailyData = data.daily; // Sauvegarde des données journalières
-
-                document.getElementById('location-altitude').innerText = `\n${Math.round(global.elevation)}m`;
-                
-                updateActiveLevels();
-                
-                renderGrid();
-                drawSounding(false);
-
-            } catch (error) {
-                console.error("Erreur API :", error);
-                windGrid.innerHTML = `<tr><td style="color: red; padding: 20px; font-size: 13px;">Données indisponibles pour ce lieu/date.</td></tr>`;
-            } finally {
-                loadingDiv.style.visibility = 'hidden';
-            }
-        }        
+        }       
 
         // Fonctions de redimensionnement du panneau droit
         // --------------------------------------------------------------------------------------------------------------------------------------------
@@ -654,6 +600,30 @@
             }
         }
 
+        async function updateWeatherData() {
+            loadingDiv.style.visibility = 'visible';
+            windGrid.innerHTML = '';
+            chartSection.style.display = 'none';
+
+            try {
+                await fetchWeatherData(modelSelect.value, currentDate, currentLat, currentLon);
+
+                document.getElementById('location-altitude').innerText = `\n${Math.round(global.elevation)}m`;
+                modelSelect.value = global.model;
+
+                updateActiveLevels();
+        
+                renderGrid();
+                drawSounding(false);
+            }
+            catch(error) {
+                windGrid.innerHTML = `<tr><td style="color: red; padding: 20px; font-size: 13px;">Données indisponibles pour ce lieu/date.</td></tr>`;
+            }
+            finally {
+                loadingDiv.style.visibility = 'hidden';
+            }
+        }
+
         // --------------------------------------------------------------------------------------------------------------------------------------------
         // ------------------------------------------------------------------- MAIN -------------------------------------------------------------------
         // --------------------------------------------------------------------------------------------------------------------------------------------
@@ -688,9 +658,9 @@
         configBtn.addEventListener('click', openConfig);
         btnCancel.addEventListener('click', closeConfig);
         btnSave.addEventListener('click', saveConfig);
-        btnPrev.addEventListener('click', () => { currentDate.setDate(currentDate.getDate() - 1); updateDateDisplay(); fetchWeatherData(); });
-        btnNext.addEventListener('click', () => { currentDate.setDate(currentDate.getDate() + 1); updateDateDisplay(); fetchWeatherData(); });
-        modelSelect.addEventListener('change', () => { fetchWeatherData(); });
+        btnPrev.addEventListener('click', () => { currentDate.setDate(currentDate.getDate() - 1); updateDateDisplay(); updateWeatherData(); });
+        btnNext.addEventListener('click', () => { currentDate.setDate(currentDate.getDate() + 1); updateDateDisplay(); updateWeatherData(); });
+        modelSelect.addEventListener('change', () => { updateWeatherData(); });
         toggleViewBtn.addEventListener('click', () => {
             common.isCompactView = !common.isCompactView;
             document.body.classList.toggle('compact-view', common.isCompactView);
@@ -720,7 +690,7 @@
         // Initial fetch of weather data
         // --------------------------------------------------------------------------------------------------------------------------------------------
         updateDateDisplay();
-        fetchWeatherData();
+        updateWeatherData();
     </script>
 </body>
 </html>
