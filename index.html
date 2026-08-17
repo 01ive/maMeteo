@@ -432,8 +432,7 @@
         import { LEVELS, windGrid, renderGrid } from './src/table.js'
         import { drawSounding } from './src/sounding.js'
         import { common, updateActiveLevels } from './src/common.js'
-        import { global } from './src/global.js'
-        import { fetchWeatherData } from './src/weather.js'
+        import { weather, fetchWeatherData } from './src/weather.js'
 
         // Default coordinates for Puy Mary at startup
         let currentLat = 45.109; 
@@ -608,8 +607,8 @@
             try {
                 await fetchWeatherData(modelSelect.value, currentDate, currentLat, currentLon);
 
-                document.getElementById('location-altitude').innerText = `\n${Math.round(global.elevation)}m`;
-                modelSelect.value = global.model;
+                document.getElementById('location-altitude').innerText = `\n${Math.round(weather.elevation)}m`;
+                modelSelect.value = weather.model;
 
                 updateActiveLevels();
         
@@ -665,7 +664,7 @@
             common.isCompactView = !common.isCompactView;
             document.body.classList.toggle('compact-view', common.isCompactView);
             toggleViewBtn.innerText = common.isCompactView ? '24h' : '3h';
-            if (global.weatherData) {
+            if (weather.weatherData) {
                 updateActiveLevels();
                 renderGrid();
                 drawSounding(false);

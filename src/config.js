@@ -1,4 +1,4 @@
-import { global } from './global.js';
+import { weather } from './weather.js';
 import { drawSounding } from './sounding.js';
 import { renderGrid } from './table.js'
 
@@ -59,7 +59,7 @@ function saveConfig() {
     
     closeConfig();
     
-    if (global.weatherData) {
+    if (weather.weatherData) {
         renderGrid();
         drawSounding(false);
     }

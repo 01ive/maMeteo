@@ -1,4 +1,4 @@
-import { global } from './global.js';
+import { weather } from './weather.js';
 import { common, formatEnvDataForHour, getEnvAtZ } from './common.js';
 import { calculateParcelPath } from './tools.js';
 import { appConfig, lapseRateColor } from './config.js';
@@ -25,9 +25,9 @@ function drawSounding(autoScroll = true) {
     // Calculate parcel path and cloud zone based on the selected hour
     const envData = formatEnvDataForHour(hourIndex);
 
-    const zBase = global.elevation;
-    const tBase = global.weatherData.temperature_2m[hourIndex];
-    const tdBase = global.weatherData.dewpoint_2m[hourIndex];
+    const zBase = weather.elevation;
+    const tBase = weather.weatherData.temperature_2m[hourIndex];
+    const tdBase = weather.weatherData.dewpoint_2m[hourIndex];
     const tParcelBase = (tBase !== undefined && tBase !== null) ? tBase + appConfig.parcelOffset : null;
 
     const parcel = calculateParcelPath(zBase, tParcelBase, tdBase, envData);
@@ -141,7 +141,7 @@ function drawSounding(autoScroll = true) {
                 y: {
                     type: 'linear',
                     position: 'left',
-                    min: Math.floor(global.elevation / 500) * 500,
+                    min: Math.floor(weather.elevation / 500) * 500,
                     ticks: {
                         stepSize: 500,
                         font: { size: 10 },

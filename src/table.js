@@ -1,4 +1,4 @@
-import {global} from './global.js'
+import {weather} from './weather.js'
 import { appConfig } from './config.js'
 import { formatEnvDataForHour, common, getLevelData, compactModeHours } from './common.js';
 import { calculateParcelPath, getRelativeHumidity } from './tools.js';
@@ -56,7 +56,7 @@ function renderGrid() {
     headerRow.appendChild(emptyTh);
 
     const visibleHourIndices = common.isCompactView
-        ? global.weatherData.time.reduce((acc, t, i) => {
+        ? weather.weatherData.time.reduce((acc, t, i) => {
             const hour = new Date(t).getHours();
             if (compactModeHours.includes(hour)) acc.push(i);
             return acc;
@@ -65,7 +65,7 @@ function renderGrid() {
     
     visibleHourIndices.forEach(i => {
         const th = document.createElement('th');
-        const date = new Date(global.weatherData.time[i]);
+        const date = new Date(weather.weatherData.time[i]);
         const hourStr = `${date.getHours()}h`;
         
         th.innerText = hourStr;
@@ -73,9 +73,9 @@ function renderGrid() {
         th.id = `hour-header-${i}`; 
         
         // --- Vérification Nuit / Jour ---
-        if (global.dailyData && global.dailyData.sunrise && global.dailyData.sunset) {
-            const sunriseTime = new Date(global.dailyData.sunrise[0]).getTime();
-            const sunsetTime = new Date(global.dailyData.sunset[0]).getTime();
+        if (weather.dailyData && weather.dailyData.sunrise && weather.dailyData.sunset) {
+            const sunriseTime = new Date(weather.dailyData.sunrise[0]).getTime();
+            const sunsetTime = new Date(weather.dailyData.sunset[0]).getTime();
             const hourTime = date.getTime();
             
             // Si l'heure est strictement avant le lever ou à partir du coucher du soleil
@@ -100,7 +100,7 @@ function renderGrid() {
         // Calculate parcel path and cloud zone based on the selected hour
         const envData = formatEnvDataForHour(i);
         
-        const parcel = calculateParcelPath(global.elevation, global.weatherData.temperature_2m[i] + appConfig.parcelOffset, global.weatherData.dewpoint_2m[i], envData);
+        const parcel = calculateParcelPath(weather.elevation, weather.weatherData.temperature_2m[i] + appConfig.parcelOffset, weather.weatherData.dewpoint_2m[i], envData);
         const parcelPath = parcel.parcelPath;
         const cloudBaseAlt = parcel.cloudZone[0];
         const ceilingZ = parcel.cloudZone[1];
@@ -126,7 +126,7 @@ function renderGrid() {
         td.dataset.hour = i;
         const ceilData = exactThermalTops[i];
         
-        if (ceilData.alt > global.elevation + 50) {
+        if (ceilData.alt > weather.elevation + 50) {
             const cloudIcon = ceilData.cloud ? ' <span style="font-size:10px;" title="Bloqué par les nuages">☁️</span>' : '<div style="color: #00dbff">⬆</div>';
             td.innerHTML = `<div style="color: #e74c3c; font-weight: bold; font-size: 13px;">${ceilData.alt}${cloudIcon}</div>`;
         } else {
@@ -157,7 +157,7 @@ function renderGrid() {
         visibleHourIndices.forEach(i => {
             const td = document.createElement('td');
             td.dataset.hour = i;
-            const data = getLevelData(level, i, global.weatherData);
+            const data = getLevelData(level, i, weather.weatherData);
             
             if (data.windSpeed === null || data.windSpeed === undefined) {
                 td.innerText = "-";
@@ -219,9 +219,9 @@ function renderGrid() {
 
     // --- NOUVELLES LIGNES : COUVERTURE NUAGEUSE ---
     // const cloudRows = [
-    //     { key: 'cloud_cover_low', label: '☁️ Bas (%)', data: global.weatherData.cloud_cover_low },
-    //     { key: 'cloud_cover_mid', label: '☁️ Moy (%)', data: global.weatherData.cloud_cover_mid },
-    //     { key: 'cloud_cover_high', label: '☁️ Hauts (%)', data: global.weatherData.cloud_cover_high }
+    //     { key: 'cloud_cover_low', label: '☁️ Bas (%)', data: weather.weatherData.cloud_cover_low },
+    //     { key: 'cloud_cover_mid', label: '☁️ Moy (%)', data: weather.weatherData.cloud_cover_mid },
+    //     { key: 'cloud_cover_high', label: '☁️ Hauts (%)', data: weather.weatherData.cloud_cover_high }
     // ];
 
     // cloudRows.forEach(cloudLayer => {
@@ -259,7 +259,7 @@ function renderGrid() {
     visibleHourIndices.forEach(i => {
         const td = document.createElement('td');
         td.dataset.hour = i;
-        const precip = global.weatherData.precipitation ? global.weatherData.precipitation[i] : 0;
+        const precip = weather.weatherData.precipitation ? weather.weatherData.precipitation[i] : 0;
         if (precip > 0) td.innerHTML = `<div style="color: #3498db; font-weight: bold; font-size: 12px;">${precip}</div>`;
         else td.innerHTML = "";
         rainRow.appendChild(td);
@@ -268,9 +268,9 @@ function renderGrid() {
 
     windGrid.appendChild(table);
 
-    const chosenHourIndex = visibleHourIndices.includes(global.selectedHourIndex)
-        ? global.selectedHourIndex : visibleHourIndices[0];
-    const chosenDate = new Date(global.weatherData.time[chosenHourIndex]);
+    const chosenHourIndex = visibleHourIndices.includes(weather.selectedHourIndex)
+        ? weather.selectedHourIndex : visibleHourIndices[0];
+    const chosenDate = new Date(weather.weatherData.time[chosenHourIndex]);
 
     setTimeout(centerTable, 0);
 }

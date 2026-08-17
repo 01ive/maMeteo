@@ -1,5 +1,5 @@
 import { LEVELS } from './table.js';
-import { global } from './global.js';
+import { weather } from './weather.js';
 import { interpolateValue, interpolateDirection } from './tools.js';
 
 const compactModeRows = ["0m", "1000m", "2000m", "3000m", "4000m", "5500m"];
@@ -23,8 +23,8 @@ function getLevelData(level, hourIndex, hourlyData) {
         };
     }
     
-    let levelAbove = [...LEVELS].reverse().find(l => parseInt(l.alt) > global.elevation);
-    let levelBelow = LEVELS.find(l => parseInt(l.alt) <= global.elevation);
+    let levelAbove = [...LEVELS].reverse().find(l => parseInt(l.alt) > weather.elevation);
+    let levelBelow = LEVELS.find(l => parseInt(l.alt) <= weather.elevation);
     
     if (!levelAbove || !levelBelow) {
         let closest = levelAbove || levelBelow || LEVELS[LEVELS.length - 1];
@@ -53,11 +53,11 @@ function getLevelData(level, hourIndex, hourlyData) {
     let pB = parseInt(levelBelow.hpa);
 
     return {
-        temp: interpolateValue(global.elevation, zA, tA, zB, tB),
-        dew: interpolateValue(global.elevation, zA, dewA, zB, dewB),
-        windSpeed: interpolateValue(global.elevation, zA, dspA, zB, dspB),
-        windDir: interpolateDirection(global.elevation, zA, dirA, zB, dirB),
-        hpa: interpolateValue(global.elevation, zA, pA, zB, pB)
+        temp: interpolateValue(weather.elevation, zA, tA, zB, tB),
+        dew: interpolateValue(weather.elevation, zA, dewA, zB, dewB),
+        windSpeed: interpolateValue(weather.elevation, zA, dspA, zB, dspB),
+        windDir: interpolateDirection(weather.elevation, zA, dirA, zB, dirB),
+        hpa: interpolateValue(weather.elevation, zA, pA, zB, pB)
     };
 }
 
@@ -65,14 +65,14 @@ function updateActiveLevels() {
     common.activeLevels = [];
 
     LEVELS.forEach(l => {
-        if (parseInt(l.alt) > global.elevation) {
+        if (parseInt(l.alt) > weather.elevation) {
             common.activeLevels.push({ ...l, z: parseInt(l.alt) });
         }
     });
     common.activeLevels.push({ 
-        alt: Math.round(global.elevation) + "m (Sol)", 
+        alt: Math.round(weather.elevation) + "m (Sol)", 
         isSurface: true, 
-        z: global.elevation 
+        z: weather.elevation 
     });
     common.activeLevels = common.isCompactView
         ? common.activeLevels.filter(level => compactModeRows.includes(level.alt) || level.isSurface)
@@ -96,7 +96,7 @@ function getEnvAtZ(envData, z) {
 
 function formatEnvDataForHour(hourIndex) {
     const reversedLevels = [...common.activeLevels].reverse();
-    const levelDataArray = reversedLevels.map(l => getLevelData(l, hourIndex, global.weatherData));
+    const levelDataArray = reversedLevels.map(l => getLevelData(l, hourIndex, weather.weatherData));
     
     let envData = reversedLevels.map((level, i) => ({
         z: level.z,
