@@ -4,15 +4,14 @@ import { calculateParcelPath } from './tools.js';
 import { appConfig, lapseRateColor } from './config.js';
 import { selectedHourIndex } from './table.js';
 
-const chartTitle = document.getElementById('chart-title');
-
 let soundingChartInstance = null;
 
 function drawSounding(autoScroll = true) {
     const hourIndex = selectedHourIndex;
-    const hourStr = `${hourIndex}h`;
+    const hourStr = `${(new Date(weather.weatherData.time[hourIndex])).getHours()}h`;
     const chartSection = document.getElementById('chart-section');
     chartSection.style.display = 'block';
+    const chartTitle = document.getElementById('chart-title');
     chartTitle.innerText = `Profil à ${hourStr}`;
 
     document.querySelectorAll('.hour-header').forEach(el => el.classList.remove('active'));

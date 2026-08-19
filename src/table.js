@@ -20,21 +20,38 @@ const LEVELS = [
     { alt: "0m",     hpa: "1000" }
 ];
 
-const windGrid = document.getElementById('wind-grid');
-
 let currentDate = new Date();
 let selectedHourIndex = currentDate.getHours();
+let callBackOnClick = null;
+
+function setSelectedHourIndex(index) {
+    selectedHourIndex = index;
+}
+
+function setCallBackOnClick(callBack) {
+    callBackOnClick = callBack;
+}
 
 // Fonctions de rendu du tableau et du graphique
 // --------------------------------------------------------------------------------------------------------------------------------------------
 function centerTable() {
     const container = document.querySelector('.grid-container');
     const table = document.getElementById('wind-grid');
-    if (container && table) {
-        const scrollPos = (table.offsetWidth - container.clientWidth) / 2;
-        container.scrollLeft = scrollPos;
-    }
-}        
+
+    if (!container || !table) return;
+
+    const target = table.querySelector(`#hour-header-${selectedHourIndex}`);
+
+    if (!target) return;
+
+    const tableLeft = table.offsetLeft;
+    const targetLeft = target.offsetLeft;
+    const targetWidth = target.offsetWidth;
+
+    const desiredScroll = targetLeft - (container.clientWidth / 2) + (targetWidth / 2);
+
+    container.scrollLeft = desiredScroll;
+}     
 
 function getWindColorClass(speed) {
     if (speed < appConfig.windLight) return 'wind-light';
@@ -45,6 +62,7 @@ function getWindColorClass(speed) {
 }
 
 function renderGrid() {
+    let windGrid = document.getElementById('wind-grid');
     windGrid.innerHTML = '';
     const table = document.createElement('tbody');
     const headerRow = document.createElement('tr');
@@ -61,7 +79,7 @@ function renderGrid() {
             if (compactModeHours.includes(hour)) acc.push(i);
             return acc;
         }, [])
-        : Array.from({ length: 24 }, (_, i) => i);
+        : Array.from({ length: weather.weatherData.time.length }, (_, i) => i);
     
     visibleHourIndices.forEach(i => {
         const th = document.createElement('th');
@@ -74,9 +92,9 @@ function renderGrid() {
         
         // --- Vérification Nuit / Jour ---
         if (weather.dailyData && weather.dailyData.sunrise && weather.dailyData.sunset) {
-            const sunriseTime = new Date(weather.dailyData.sunrise[0]).getTime();
-            const sunsetTime = new Date(weather.dailyData.sunset[0]).getTime();
-            const hourTime = date.getTime();
+            const sunriseTime = new Date(weather.dailyData.sunrise[0]).getHours();
+            const sunsetTime = new Date(weather.dailyData.sunset[0]).getHours();
+            const hourTime = date.getHours();
             
             // Si l'heure est strictement avant le lever ou à partir du coucher du soleil
             if (hourTime < sunriseTime || hourTime >= sunsetTime) {
@@ -85,7 +103,8 @@ function renderGrid() {
         }
         
         th.onclick = () => { 
-            selectedHourIndex = i; 
+            selectedHourIndex = i;
+            if(callBackOnClick) callBackOnClick();
             drawSounding(); 
         };
 
@@ -96,7 +115,7 @@ function renderGrid() {
     const thermalTops = [];      
     const exactThermalTops = []; 
     
-    for (let i = 0; i < 24; i++) {        
+    for (let i = 0; i < weather.weatherData.time.length; i++) {        
         // Calculate parcel path and cloud zone based on the selected hour
         const envData = formatEnvDataForHour(i);
         
@@ -268,11 +287,7 @@ function renderGrid() {
 
     windGrid.appendChild(table);
 
-    const chosenHourIndex = visibleHourIndices.includes(weather.selectedHourIndex)
-        ? weather.selectedHourIndex : visibleHourIndices[0];
-    const chosenDate = new Date(weather.weatherData.time[chosenHourIndex]);
-
     setTimeout(centerTable, 0);
 }
 
-export { LEVELS, windGrid, selectedHourIndex, renderGrid, getWindColorClass, centerTable };
+export { LEVELS, selectedHourIndex, setSelectedHourIndex, setCallBackOnClick, renderGrid, getWindColorClass, centerTable };

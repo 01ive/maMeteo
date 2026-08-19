@@ -429,7 +429,7 @@
     <script type="module">
         import { appConfig, openConfig, closeConfig, saveConfig } from './src/config.js';
         import { loadPioupiouStations } from './src/pioupiou.js'
-        import { LEVELS, windGrid, renderGrid } from './src/table.js'
+        import { LEVELS, renderGrid } from './src/table.js'
         import { drawSounding } from './src/sounding.js'
         import { common, updateActiveLevels } from './src/common.js'
         import { weather, fetchWeatherData } from './src/weather.js'
@@ -601,6 +601,7 @@
 
         async function updateWeatherData() {
             loadingDiv.style.visibility = 'visible';
+            let windGrid = document.getElementById('wind-grid');
             windGrid.innerHTML = '';
             chartSection.style.display = 'none';
 
