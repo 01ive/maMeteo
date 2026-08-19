@@ -121,6 +121,7 @@ function drawSounding(autoScroll = true) {
         });
     }
 
+    const activeLevelTicks = common.activeLevels.map(level => level.z);
     soundingChartInstance = new Chart(ctx, {
         type: 'line',
         data: { datasets },
@@ -139,10 +140,20 @@ function drawSounding(autoScroll = true) {
                     type: 'linear',
                     position: 'left',
                     min: Math.floor(weather.elevation / 500) * 500,
+                    afterBuildTicks: (axis) => {
+                        axis.ticks = activeLevelTicks.map(value => ({ value }));
+                    },
                     ticks: {
-                        stepSize: 500,
                         font: { size: 10 },
-                        callback: function(value) { return value + "m"; }
+                        callback: function(value) { 
+                            const index = activeLevelTicks.findIndex( (i) => {return i==value} );
+                            if(index < activeLevelTicks.length) {
+                                if( (activeLevelTicks[index] - activeLevelTicks[index+1]) < 500 ) {
+                                    return null;
+                                }
+                            }
+                            return common.activeLevels[index].alt; 
+                        }
                     }
                 }
             },
@@ -207,6 +218,16 @@ function drawSounding(autoScroll = true) {
                     });
                     ctx.restore();
                     // --- FIN NOUVEAU ---
+
+                    const yGround = y.getPixelForValue(weather.elevation);
+                    ctx.save();
+                    if (yGround >= chartArea.top && yGround <= chartArea.bottom) {
+                        ctx.beginPath();
+                        ctx.fillStyle = '#8a7674';
+                        ctx.fillRect(chartArea.left, chartArea.bottom, chartArea.width, yGround-chartArea.bottom);
+                        ctx.stroke();
+                    }
+                    ctx.restore();
 
                     // Vérifie si le thermique décolle vraiment (au moins 50m au-dessus du sol)
                     let hasThermal = cloudBaseAlt > zBase + 50;

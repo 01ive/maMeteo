@@ -70,7 +70,7 @@ function updateActiveLevels() {
         }
     });
     common.activeLevels.push({ 
-        alt: Math.round(weather.elevation) + "m (Sol)", 
+        alt: Math.round(weather.elevation) + "m", 
         isSurface: true, 
         z: weather.elevation 
     });
