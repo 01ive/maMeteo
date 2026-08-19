@@ -11,8 +11,6 @@ function drawSounding(autoScroll = true) {
     const hourStr = `${(new Date(weather.weatherData.time[hourIndex])).getHours()}h`;
     const chartSection = document.getElementById('chart-section');
     chartSection.style.display = 'block';
-    const chartTitle = document.getElementById('chart-title');
-    chartTitle.innerText = `Profil à ${hourStr}`;
 
     document.querySelectorAll('.hour-header').forEach(el => el.classList.remove('active'));
     const activeHeader = document.getElementById(`hour-header-${hourIndex}`);
