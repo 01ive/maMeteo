@@ -146,6 +146,12 @@
             color: #2c3e50;
         }
 
+        #sub-location-name {
+            display: flex;
+            justify-content: space-between;
+            flex-direction: row;
+        }
+
         #coords-display {
             font-size: 12px;
             color: #666;
@@ -153,6 +159,12 @@
         }
         
         #location-altitude {
+            font-size: 12px;
+            color: #666;
+            margin: 0;
+        }
+
+        #location-temperature {
             font-size: 12px;
             color: #666;
             margin: 0;
@@ -227,6 +239,11 @@
 
         #loading { position: absolute; top: -20px; left: 10px; font-style: italic; color: #666; height: 20px; font-size: 13px; }
 
+        #footer {
+            display: flex;
+            align-items: flex-start;
+            justify-content: center;
+        }
         /* --- Styles spécifiques au Mode Simple sur Bureau : Hauteur synchronisée stricte --- */
         body.compact-view .grid-chart-layout {
             flex-direction: row;
@@ -252,7 +269,6 @@
             margin: 0 0 15px 0; 
             height: 18px;       /* Hauteur fixe pour le titre */
         }
-
 
         body.compact-view .canvas-wrapper {
             position: absolute;
@@ -357,9 +373,11 @@
             <h2>
                 <span style="display: flex; flex-direction: column; align-items: center; justify-content: flex-start; line-height: 0.8;">
                     <span id="location-name">Puy Mary</span>
-                    <span id="location-altitude"></span>
+                    <span id="sub-location-name">
+                        <span id="location-altitude"></span>
+                        <span id="location-temperature"></span>
+                    </span>
                 </span>
-                <span id="coords-display">45.109°N<br>2.676°E</span>
             </h2>
             <div id="help" style="font-size: 20px;">
                 <a href="https://github.com/01ive/maMeteo" title="Info" style="text-decoration: none;">ℹ️</a>
@@ -421,12 +439,15 @@
                 </div>
             </div>
         </div>
+        <div id="footer">
+            <span id="coords-display"><br>45.109°N<br>2.676°E</span>
+        </div>
     </div>
 
     <script type="module">
         import { appConfig, openConfig, closeConfig, saveConfig } from './src/config.js';
         import { loadPioupiouStations } from './src/pioupiou.js'
-        import { LEVELS, renderGrid } from './src/table.js'
+        import { LEVELS, selectedHourIndex, renderGrid, setCallBackOnClick } from './src/table.js'
         import { drawSounding } from './src/sounding.js'
         import { common, updateActiveLevels } from './src/common.js'
         import { weather, fetchWeatherData } from './src/weather.js'
@@ -604,14 +625,14 @@
 
             try {
                 await fetchWeatherData(modelSelect.value, currentDate, currentLat, currentLon);
-
-                document.getElementById('location-altitude').innerText = `\n${Math.round(weather.elevation)}m`;
                 modelSelect.value = weather.model;
 
-                updateActiveLevels();
-        
+                updateActiveLevels();       
                 renderGrid();
                 drawSounding(false);
+
+                document.getElementById('location-altitude').innerText = `\n⛰️${Math.round(weather.elevation)}m`;
+                document.getElementById('location-temperature').innerText = `\n🌡️${Math.round(weather.weatherData.temperature_2m[selectedHourIndex])}°C`;
             }
             catch(error) {
                 windGrid.innerHTML = `<tr><td style="color: red; padding: 20px; font-size: 13px;">Données indisponibles pour ce lieu/date.</td></tr>`;
@@ -668,6 +689,10 @@
                 drawSounding(false);
             }
         });
+        function callBackOnTableClick() {
+            document.getElementById('location-temperature').innerText = `\n🌡️${Math.round(weather.weatherData.temperature_2m[selectedHourIndex])}°C`;
+        }
+        setCallBackOnClick(callBackOnTableClick);
 
         // Resizer logic initialization
         // --------------------------------------------------------------------------------------------------------------------------------------------

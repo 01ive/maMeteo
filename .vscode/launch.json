@@ -2,8 +2,15 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "MaMeteo localhost",
+            "name": "Linux MaMeteo localhost",
             "type": "chrome",
+            "request": "launch",
+            "url": "http://localhost:8000",
+            "webRoot": "${workspaceFolder}"
+        },
+        {
+            "name": "Windows MaMeteo (Attach)",
+            "type": "msedge",
             "request": "launch",
             "url": "http://localhost:8000",
             "webRoot": "${workspaceFolder}"
