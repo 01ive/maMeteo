@@ -388,6 +388,7 @@
             <h3>Configuration</h3>
             <div class="config-section">
                 <strong>Vents Table (km/h)</strong>
+                <div class="config-row"><label>Altitude max</label><input type="number" id="cfg-altitude-max" step="500"></div>
                 <div class="config-row"><label>Faible (<span class="wind-light">Vert</span>)</label><input type="number" id="cfg-wind-light" step="1"></div>
                 <div class="config-row"><label>Modéré (<span class="wind-mod">Jaune</span>)</label><input type="number" id="cfg-wind-mod" step="1"></div>
                 <div class="config-row"><label>Fort (<span class="wind-strong">Orange</span>)</label><input type="number" id="cfg-wind-strong" step="1"></div>
@@ -635,6 +636,7 @@
                 document.getElementById('location-temperature').innerText = `\n🌡️${Math.round(weather.weatherData.temperature_2m[selectedHourIndex])}°C`;
             }
             catch(error) {
+                console.log(error);
                 windGrid.innerHTML = `<tr><td style="color: red; padding: 20px; font-size: 13px;">Données indisponibles pour ce lieu/date.</td></tr>`;
             }
             finally {

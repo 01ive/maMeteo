@@ -1,6 +1,7 @@
 import { weather } from './weather.js';
 import { drawSounding } from './sounding.js';
 import { renderGrid } from './table.js'
+import { updateActiveLevels } from './common.js'
 
 // Default configuration values
 const lapseRateColor = {
@@ -12,6 +13,7 @@ const lapseRateColor = {
 }
 
 let appConfig = {
+    altitudeMax: 7000,
     windLight: 15,
     windMod: 30,
     windStrong: 50,
@@ -28,6 +30,7 @@ let appConfig = {
 // Fonctions du menu de configuration
 // --------------------------------------------------------------------------------------------------------------------------------------------
 function openConfig() {
+    document.getElementById('cfg-altitude-max').value = appConfig.altitudeMax;
     document.getElementById('cfg-wind-light').value = appConfig.windLight;
     document.getElementById('cfg-wind-mod').value = appConfig.windMod;
     document.getElementById('cfg-wind-strong').value = appConfig.windStrong;
@@ -45,6 +48,7 @@ function openConfig() {
 function closeConfig() { document.getElementById('config-modal').style.display = 'none'; }
 
 function saveConfig() {
+    appConfig.altitudeMax = parseFloat(document.getElementById('cfg-altitude-max').value);
     appConfig.windLight = parseFloat(document.getElementById('cfg-wind-light').value);
     appConfig.windMod = parseFloat(document.getElementById('cfg-wind-mod').value);
     appConfig.windStrong = parseFloat(document.getElementById('cfg-wind-strong').value);
@@ -60,6 +64,7 @@ function saveConfig() {
     closeConfig();
     
     if (weather.weatherData) {
+        updateActiveLevels();
         renderGrid();
         drawSounding(false);
     }

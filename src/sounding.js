@@ -190,7 +190,7 @@ function drawSounding(autoScroll = true) {
                     // --- NOUVEAU : Dessiner la grille de température inclinée (Isothermes) ---
                     const skew = appConfig.skewFactor;
                     ctx.save();
-                    ctx.strokeStyle = '#eee'; // Couleur identique à la grille par défaut
+                    ctx.strokeStyle = '#7e7e7e'; // Couleur identique à la grille par défaut
                     ctx.lineWidth = 1;
                     
                     const zBottom = y.min;

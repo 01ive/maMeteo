@@ -1,6 +1,7 @@
 import { LEVELS } from './table.js';
 import { weather } from './weather.js';
 import { interpolateValue, interpolateDirection } from './tools.js';
+import { appConfig } from './config.js'
 
 const compactModeRows = ["0m", "1000m", "2000m", "3000m", "4000m", "5500m"];
 const compactModeHours = [9, 13, 17];
@@ -77,6 +78,9 @@ function updateActiveLevels() {
     common.activeLevels = common.isCompactView
         ? common.activeLevels.filter(level => compactModeRows.includes(level.alt) || level.isSurface)
         : common.activeLevels;
+    common.activeLevels = common.activeLevels.filter((level) => {
+        return level.z <= appConfig.altitudeMax
+    });
 }
 
 function getEnvAtZ(envData, z) {

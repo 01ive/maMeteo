@@ -40,11 +40,11 @@ function centerTable() {
 
     if (!container || !table) return;
 
-    const target = table.querySelector(`#hour-header-${selectedHourIndex}`);
+    const target = table.querySelector(`td[data-hour="${selectedHourIndex}"]`) ||
+        table.querySelector(`#hour-header-${selectedHourIndex}`);
 
     if (!target) return;
 
-    const tableLeft = table.offsetLeft;
     const targetLeft = target.offsetLeft;
     const targetWidth = target.offsetWidth;
 
