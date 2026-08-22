@@ -1,2 +1,5 @@
 .chart-container { background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); display: none; min-width: 260px; }
-.canvas-wrapper { position: relative; height: 450px; width: 100%; } /* Hauteur augmentée pour la proportionnalité linéaire */
+.canvas-wrapper { position: relative; height: 450px; width: 100%; color: red;} /* Hauteur augmentée pour la proportionnalité linéaire */
+:root {
+  --color-canvas-text: #000;
+}

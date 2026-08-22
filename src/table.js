@@ -68,7 +68,7 @@ function renderGrid() {
     const headerRow = document.createElement('tr');
     
     const emptyTh = document.createElement('th');
-    emptyTh.innerText = "Heure";
+    emptyTh.innerText = "Hour";
     emptyTh.style.fontSize = "11px";
     emptyTh.style.zIndex = "3"; 
     headerRow.appendChild(emptyTh);
@@ -136,7 +136,7 @@ function renderGrid() {
     const topRow = document.createElement('tr');
     const thTop = document.createElement('th');
     thTop.className = 'y-axis';
-    thTop.innerText = 'Plafond (m)';
+    thTop.innerText = 'Thermal\nceiling (m)';
     thTop.style.color = '#e74c3c';
     topRow.appendChild(thTop);
 
@@ -151,7 +151,6 @@ function renderGrid() {
         } else {
             td.innerHTML = `<div style="color: #999; font-size: 11px;"></div>`;
         }
-        td.style.backgroundColor = '#fdf2f0'; 
         topRow.appendChild(td);
     });
     table.appendChild(topRow);

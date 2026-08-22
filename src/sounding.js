@@ -51,13 +51,17 @@ function drawSounding(autoScroll = true) {
         existingChart.destroy();
     }
     const ctx = canvas.getContext('2d');
+
+    const textColor = window.getComputedStyle(canvas)
+        .getPropertyValue('--color-canvas-text')
+        .trim();
     
     const datasets = [
         {
-            label: 'Température (°C)',
+            label: 'Temperature (°C)',
             data: envPoints,
-            borderColor: '#333',
-            backgroundColor: '#333',
+            // borderColor: '#333',
+            // backgroundColor: '#333',
             borderWidth: 2,
             tension: 0,
             pointRadius: 0, 
@@ -97,7 +101,7 @@ function drawSounding(autoScroll = true) {
     if (!common.isCompactView) {
         // On ajoute la Parcelle uniquement en mode complet
         datasets.push({
-            label: 'Parcelle (Sèche/Humide)',
+            label: 'Particle elevation',
             data: parcelChartPoints,
             borderColor: '#f39c12',
             backgroundColor: '#f39c12',
@@ -110,7 +114,7 @@ function drawSounding(autoScroll = true) {
 
         // On ajoute le Point de Rosée uniquement en mode complet
         datasets.push({
-            label: 'Pt Rosée (°C)',
+            label: 'Dew Point (°C)',
             data: dewPoints,
             borderColor: '#3498db',
             backgroundColor: '#3498db',
@@ -134,7 +138,7 @@ function drawSounding(autoScroll = true) {
                     type: 'linear',
                     position: 'bottom',
                     grid: { display: false },
-                    ticks: { font: { size: 10 } }
+                    ticks: { color: textColor, font: { size: 10 } }
                 },
                 y: {
                     type: 'linear',
@@ -144,6 +148,7 @@ function drawSounding(autoScroll = true) {
                         axis.ticks = activeLevelTicks.map(value => ({ value }));
                     },
                     ticks: {
+                        color: textColor,
                         font: { size: 10 },
                         callback: function(value) { 
                             const index = activeLevelTicks.findIndex( (i) => {return i==value} );
@@ -158,7 +163,7 @@ function drawSounding(autoScroll = true) {
                 }
             },
             plugins: {
-                legend: { labels: { boxWidth: 10, font: { size: 11 } }, display: true, position: 'bottom' },
+                legend: { labels: { boxWidth: 10, color: textColor, font: { size: 11 } }, display: true, position: 'bottom' },
                 tooltip: {
                     callbacks: {
                         label: function(context) {
@@ -307,9 +312,9 @@ function drawSounding(autoScroll = true) {
                             const text = lapseRate.toFixed(2);
                             
                             // Contour blanc de protection pour la lisibilité
-                            ctx.lineWidth = 3;
-                            ctx.strokeStyle = 'rgba(255,255,255,0.8)';
-                            ctx.strokeText(text, chartArea.right - 5, pyMid);
+                            // ctx.lineWidth = 3;
+                            // ctx.strokeStyle = 'rgba(255,255,255,0.8)';
+                            // ctx.strokeText(text, chartArea.right - 5, pyMid);
                             
                             // Texte coloré
                             ctx.fillStyle = color;
