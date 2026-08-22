@@ -71,6 +71,7 @@ function renderGrid() {
     emptyTh.innerText = "Hour";
     emptyTh.style.fontSize = "11px";
     emptyTh.style.zIndex = "3"; 
+    emptyTh.className = 'hour-header';
     headerRow.appendChild(emptyTh);
 
     const visibleHourIndices = common.isCompactView
