@@ -87,7 +87,7 @@
         #search-box {
             position: absolute;
             top: 10px;
-            left: 50px; 
+            left: 10px; 
             z-index: 1000;
             background: rgba(255, 255, 255, 0.85); 
             /* backdrop-filter: blur(8px);  */
@@ -299,7 +299,7 @@
                 box-shadow: 0 -3px 0 #fff, 0 3px 0 #fff;
             }
 
-            #search-box { top: 10px; left: 50px; right: 10px; width: calc(100% - 60px); }
+            #search-box { top: 10px; left: 10px; right: 10px; width: calc(100% - 20px); }
             #search-input { width: 100%; }
             #right-panel { flex: 0 0 55vh; width: 100%; min-height: 0; overflow-y: auto; border-left: none; border-top: none; padding: 10px 10px calc(20px + env(safe-area-inset-bottom, 20px)) 10px; }
             .top-bar h2 { font-size: 1.2rem; }
@@ -644,6 +644,48 @@
             }
         }
 
+        // MAP services
+        // --------------------------------------------------------------------------------------------------------------------------------------------
+        // Create map layers
+        var GeoportailFrance_plan = L.tileLayer('https://data.geopf.fr/wmts?REQUEST=GetTile&SERVICE=WMTS&VERSION=1.0.0&STYLE={style}&TILEMATRIXSET=PM&FORMAT={format}&LAYER=GEOGRAPHICALGRIDSYSTEMS.PLANIGNV2&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}', {
+            attribution: '<a target="_blank" href="https://www.geoportail.gouv.fr/">Geoportail France</a>',
+            bounds: [[-75, -180], [81, 180]],
+            minZoom: 2,
+            maxZoom: 18,
+            apikey: 'choisirgeoportail',
+            format: 'image/png',
+            style: 'normal'
+        });
+        var GeoportailFrance_orthos = L.tileLayer('https://data.geopf.fr/wmts?REQUEST=GetTile&SERVICE=WMTS&VERSION=1.0.0&STYLE={style}&TILEMATRIXSET=PM&FORMAT={format}&LAYER=ORTHOIMAGERY.ORTHOPHOTOS&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}', {
+            attribution: '<a target="_blank" href="https://www.geoportail.gouv.fr/">Geoportail France</a>',
+            bounds: [[-75, -180], [81, 180]],
+            minZoom: 2,
+            maxZoom: 19,
+            apikey: 'choisirgeoportail',
+            format: 'image/jpeg',
+            style: 'normal'
+        });
+        var osm_fr = L.tileLayer('https://{s}.tile.openstreetmap.fr/osmfr/{z}/{x}/{y}.png', {
+            maxZoom: 20,
+            attribution: '&copy; OpenStreetMap France | &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        });
+        var OpenTopoMap = L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
+            maxZoom: 17,
+            attribution: 'Map data: &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, <a href="http://viewfinderpanoramas.org">SRTM</a> | Map style: &copy; <a href="https://opentopomap.org">OpenTopoMap</a> (<a href="https://creativecommons.org/licenses/by-sa/3.0/">CC-BY-SA</a>)'
+        });
+        var Esri_WorldImagery = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+            attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community'
+        });
+
+        // Create layer control for map
+        var baseMaps = {
+            "Geoportail plan": GeoportailFrance_plan,
+            "Geoportail sat": GeoportailFrance_orthos,
+            "OpenStreetMap": osm_fr,
+            "OpenTopoMap": OpenTopoMap,
+            "Esri_WorldImagery": Esri_WorldImagery
+        };
+
         // --------------------------------------------------------------------------------------------------------------------------------------------
         // ------------------------------------------------------------------- MAIN -------------------------------------------------------------------
         // --------------------------------------------------------------------------------------------------------------------------------------------
@@ -655,13 +697,10 @@
 
         geolocBtn.addEventListener('click', getGpsLocation);
 
-        const map = L.map('map').setView([currentLat, currentLon], 11);
-        
-        // Use IGN's tiles for the map
-        L.tileLayer('https://data.geopf.fr/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=GEOGRAPHICALGRIDSYSTEMS.PLANIGNV2&STYLE=normal&FORMAT=image/png&TILEMATRIXSET=PM&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}', {
-            maxZoom: 19,
-            attribution: '© <a href="https://www.ign.fr/">IGN</a> - Géoportail'
-        }).addTo(map);
+        const map = L.map('map', {zoomControl: false, layers: [GeoportailFrance_plan],}).setView([currentLat, currentLon], 11);
+
+        let layerControl = L.control.layers(baseMaps).addTo(map);
+        layerControl.setPosition('bottomleft');
 
         let marker = L.marker([currentLat, currentLon]).addTo(map);
         let pioupiouLayer = L.layerGroup().addTo(map);       
