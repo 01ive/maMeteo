@@ -24,6 +24,8 @@
 
     <script type="module" src="src/tools.js"></script>
     <script type="module" src="src/common.js"></script>
+    <script type="module" src="src/measure.js"></script>
+    <link rel="stylesheet" href="src/measure.css"/>
 
     <style>
         :root {
@@ -530,6 +532,7 @@
         }
 
         async function setGpsPositionByMapClick(e) {
+            if (window.distanceMeasure && window.distanceMeasure.isActive()) return;
             currentLat = e.latlng.lat;
             currentLon = e.latlng.lng;
             setLocationByCoordinates(currentLat, currentLon);
@@ -698,6 +701,8 @@
         geolocBtn.addEventListener('click', getGpsLocation);
 
         const map = L.map('map', {zoomControl: false, layers: [GeoportailFrance_plan],}).setView([currentLat, currentLon], 11);
+
+        window.createMeasureTool(map);
 
         let layerControl = L.control.layers(baseMaps).addTo(map);
         layerControl.setPosition('bottomleft');
