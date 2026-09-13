@@ -437,6 +437,7 @@
                 <table id="wind-grid"></table>
             </div>
             <div class="chart-container" id="chart-section">
+                <h3 id="chart-title">Profil vertical</h3>
                 <div class="canvas-wrapper">
                     <canvas id="sondageChart"></canvas>
                 </div>
@@ -450,7 +451,7 @@
     <script type="module">
         import { appConfig, openConfig, closeConfig, saveConfig } from './src/config.js';
         import { loadPioupiouStations } from './src/pioupiou.js'
-        import { LEVELS, selectedHourIndex, renderGrid, setCallBackOnClick } from './src/table.js'
+        import { LEVELS, selectedHourIndex, setSelectedHourIndex, renderGrid, setCallBackOnClick } from './src/table.js'
         import { drawSounding } from './src/sounding.js'
         import { common, updateActiveLevels } from './src/common.js'
         import { weather, fetchWeatherData } from './src/weather.js'
@@ -689,6 +690,20 @@
             "Esri_WorldImagery": Esri_WorldImagery
         };
 
+        // Mobile responsiveness: Adjust view based on screen width
+        // --------------------------------------------------------------------------------------------------------------------------------------------
+        // Function to display compact or normal mode based on screen width
+        function toggleCompactView() {
+            common.isCompactView = !common.isCompactView;
+            document.body.classList.toggle('compact-view', common.isCompactView);
+            toggleViewBtn.innerText = common.isCompactView ? '24h' : '3h';
+            if (weather.weatherData) {
+                updateActiveLevels();
+                renderGrid();
+                drawSounding(false);
+            }
+        }
+
         // --------------------------------------------------------------------------------------------------------------------------------------------
         // ------------------------------------------------------------------- MAIN -------------------------------------------------------------------
         // --------------------------------------------------------------------------------------------------------------------------------------------
@@ -699,6 +714,8 @@
         searchInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') performSearch(); });
 
         geolocBtn.addEventListener('click', getGpsLocation);
+
+        getGpsLocation();   // To initialize the map with the user's current location if available
 
         const map = L.map('map', {zoomControl: false, layers: [GeoportailFrance_plan],}).setView([currentLat, currentLon], 11);
 
@@ -725,20 +742,16 @@
         btnPrev.addEventListener('click', () => { currentDate.setDate(currentDate.getDate() - 1); updateDateDisplay(); updateWeatherData(); });
         btnNext.addEventListener('click', () => { currentDate.setDate(currentDate.getDate() + 1); updateDateDisplay(); updateWeatherData(); });
         modelSelect.addEventListener('change', () => { updateWeatherData(); });
-        toggleViewBtn.addEventListener('click', () => {
-            common.isCompactView = !common.isCompactView;
-            document.body.classList.toggle('compact-view', common.isCompactView);
-            toggleViewBtn.innerText = common.isCompactView ? '24h' : '3h';
-            if (weather.weatherData) {
-                updateActiveLevels();
-                renderGrid();
-                drawSounding(false);
-            }
-        });
+        toggleViewBtn.addEventListener('click', toggleCompactView);
         function callBackOnTableClick() {
             document.getElementById('location-temperature').innerText = `\n🌡️${Math.round(weather.weatherData.temperature_2m[selectedHourIndex])}°C`;
         }
         setCallBackOnClick(callBackOnTableClick);
+
+        // Check initial screen width and set compact view if necessary for mobile devices
+        if(window.matchMedia('(max-width: 768px)').matches) {
+            toggleCompactView()
+        }
 
         // Resizer logic initialization
         // --------------------------------------------------------------------------------------------------------------------------------------------

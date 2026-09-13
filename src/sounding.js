@@ -12,6 +12,9 @@ function drawSounding(autoScroll = true) {
     const chartSection = document.getElementById('chart-section');
     chartSection.style.display = 'block';
 
+    const chartTitle = document.getElementById('chart-title');
+    chartTitle.innerText = `${hourStr}`;
+
     document.querySelectorAll('.hour-header').forEach(el => el.classList.remove('active'));
     const activeHeader = document.getElementById(`hour-header-${hourIndex}`);
     if (activeHeader) activeHeader.classList.add('active');

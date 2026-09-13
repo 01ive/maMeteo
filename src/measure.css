@@ -1,14 +1,16 @@
 .measure-control { 
     display: flex;
-    align-items: flex-end;
+    align-items: flex-start;
     flex-direction: column-reverse;
-    gap: 6px; }
+    gap: 6px;
+    margin-top: 0 !important;
+}
 
 .measure-toggle {
-    width: 44px;
-    height: 44px;
+    width: 48px;
+    height: 48px;
     border: 2px solid rgba(0, 0, 0, 0.2);
-    border-radius: 4px;
+    border-radius: 6px;
     padding: 0;
     background: #fff;
     color: #168aad;

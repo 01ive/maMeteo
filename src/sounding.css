@@ -3,3 +3,4 @@
 :root {
   --color-canvas-text: #000;
 }
+#chart-title { text-align: center; margin-top: 0; font-size: 12px; color: #2c3e50; margin-bottom: 2px; }

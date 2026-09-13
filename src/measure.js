@@ -13,7 +13,7 @@ function createMeasureTool(map) {
         elevationRequestId: 0
     };
 
-    const control = L.control({ position: 'bottomright' });
+    const control = L.control({ position: 'bottomleft' });
     control.onAdd = () => {
         const container = L.DomUtil.create('div', 'leaflet-control measure-control');
         const button = L.DomUtil.create('button', 'measure-toggle', container);
